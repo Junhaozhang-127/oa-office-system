@@ -28,7 +28,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/static/**", "/index.html", "/api/attendance/**").permitAll()
+                .requestMatchers("/static/**", "/index.html", "/api/attendance/**", "/api/employee/**").permitAll()
                 .anyRequest().permitAll() // 开发阶段放行所有接口，后续集成JWT时收紧
             );
         return http.build();

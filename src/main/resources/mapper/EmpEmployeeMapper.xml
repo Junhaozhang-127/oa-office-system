@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.buu.oa.mapper.EmpEmployeeMapper">
+
+    <!--
+        查询全部员工列表
+        INNER JOIN sys_dept 获取部门名称，按工号排序
+    -->
+    <select id="selectEmployeeList" resultType="java.util.HashMap">
+        SELECT e.id, e.emp_no AS empNo, e.name, e.gender,
+               e.dept_id AS deptId, d.dept_name AS deptName,
+               e.position, e.entry_date AS entryDate, e.status,
+               e.phone, e.email
+        FROM emp_employee e
+        INNER JOIN sys_dept d ON e.dept_id = d.id
+        ORDER BY e.id
+    </select>
+
+    <!--
+        查询单个员工详细信息
+        联查 sys_dept 获取部门名称
+    -->
+    <select id="selectEmployeeDetail" resultType="java.util.HashMap">
+        SELECT e.id, e.emp_no AS empNo, e.name, e.gender,
+               e.dept_id AS deptId, d.dept_name AS deptName,
+               e.position, e.entry_date AS entryDate, e.status,
+               e.phone, e.email
+        FROM emp_employee e
+        INNER JOIN sys_dept d ON e.dept_id = d.id
+        WHERE e.id = #{empId}
+    </select>
+
+    <!-- 查询员工总数 -->
+    <select id="selectEmployeeCount" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM emp_employee
+    </select>
+
+</mapper>

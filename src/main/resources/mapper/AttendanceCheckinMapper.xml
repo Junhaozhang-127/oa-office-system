@@ -36,4 +36,17 @@
           AND MONTH(check_date) = #{month}
     </select>
 
+    <!--
+        查询员工近期打卡记录
+        按日期倒序排列，用于员工详情页展示
+    -->
+    <select id="selectRecentRecords" resultType="com.buu.oa.entity.AttendanceCheckin">
+        SELECT ac.id, ac.emp_id, ac.check_date, ac.check_in_time,
+               ac.check_out_time, ac.status, ac.create_time, ac.update_time
+        FROM attendance_checkin ac
+        WHERE ac.emp_id = #{empId}
+        ORDER BY ac.check_date DESC
+        LIMIT #{limit}
+    </select>
+
 </mapper>

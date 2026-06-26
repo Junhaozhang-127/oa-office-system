@@ -35,4 +35,13 @@ public interface AttendanceCheckinMapper extends BaseMapper<AttendanceCheckin> {
     java.util.Map<String, Object> selectMonthStats(@Param("empId") Long empId,
                                                     @Param("year") Integer year,
                                                     @Param("month") Integer month);
+
+    /**
+     * 查询员工近期打卡记录
+     * @param empId 员工ID
+     * @param limit 返回条数
+     * @return 近期打卡记录列表，按日期倒序
+     */
+    List<AttendanceCheckin> selectRecentRecords(@Param("empId") Long empId,
+                                                @Param("limit") Integer limit);
 }
