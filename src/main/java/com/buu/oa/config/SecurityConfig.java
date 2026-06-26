@@ -15,6 +15,13 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    /**
+     * 安全过滤链配置
+     * 关闭CSRF、启用无状态会话，放行静态资源与考勤API，开发阶段放行所有请求
+     * @param http HttpSecurity配置对象
+     * @return SecurityFilterChain安全过滤链
+     * @throws Exception 配置异常时抛出
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http

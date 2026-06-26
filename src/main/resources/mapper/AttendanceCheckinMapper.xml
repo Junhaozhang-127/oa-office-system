@@ -5,7 +5,7 @@
 
     <!--
         查询员工指定月份的考勤日历数据
-        联查员工表获取姓名，仅返回打卡记录中存在的日期
+        返回打卡记录中存在的日期，用于构建日历网格
     -->
     <select id="selectMonthCalendar" resultType="com.buu.oa.entity.AttendanceCheckin">
         SELECT ac.id, ac.emp_id, ac.check_date, ac.check_in_time,

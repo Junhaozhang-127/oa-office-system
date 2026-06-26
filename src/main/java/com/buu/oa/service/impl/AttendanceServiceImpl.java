@@ -22,6 +22,13 @@ public class AttendanceServiceImpl implements AttendanceService {
         this.attendanceCheckinMapper = attendanceCheckinMapper;
     }
 
+    /**
+     * 获取员工月考勤日历
+     * @param empId 员工ID
+     * @param year 年份
+     * @param month 月份
+     * @return 包含日历网格和月度统计的Map
+     */
     @Override
     public Map<String, Object> getMonthCalendar(Long empId, Integer year, Integer month) {
         // 1. 查询当月所有打卡记录
