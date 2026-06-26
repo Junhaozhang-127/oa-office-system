@@ -5,263 +5,737 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OA协同办公平台</title>
 <style>
+  /* ============================================================
+   * OA协同办公平台 — 全局样式
+   * 配色：Slate + Blue 企业级配色体系
+   * ============================================================ */
+  :root {
+    /* 品牌色 */
+    --brand-50:  #eff6ff;
+    --brand-100: #dbeafe;
+    --brand-200: #bfdbfe;
+    --brand-500: #3b82f6;
+    --brand-600: #2563eb;
+    --brand-700: #1d4ed8;
+
+    /* 中性色 */
+    --gray-50:  #f8fafc;
+    --gray-100: #f1f5f9;
+    --gray-200: #e2e8f0;
+    --gray-300: #cbd5e1;
+    --gray-400: #94a3b8;
+    --gray-500: #64748b;
+    --gray-600: #475569;
+    --gray-700: #334155;
+    --gray-800: #1e293b;
+    --gray-900: #0f172a;
+
+    /* 语义色 */
+    --success:   #10b981;
+    --success-bg:#ecfdf5;
+    --warning:   #f59e0b;
+    --warning-bg:#fffbeb;
+    --danger:    #ef4444;
+    --danger-bg: #fef2f2;
+    --info:      #8b5cf6;
+    --info-bg:   #f5f3ff;
+
+    /* 布局 */
+    --sidebar-w: 224px;
+    --topbar-h:  56px;
+    --radius:    10px;
+    --radius-sm: 7px;
+    --radius-xs: 4px;
+
+    /* 阴影 */
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.03);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.07);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,0.09);
+
+    /* 过渡 */
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:"PingFang SC","Microsoft YaHei",sans-serif; background:#f0f2f5; color:#262626; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+    background: var(--gray-100);
+    color: var(--gray-800);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-  /* 顶部导航栏 */
-  .topbar { background:#001529; height:56px; display:flex; align-items:center; padding:0 24px; gap:16px; color:#fff; }
-  .topbar .logo { font-size:16px; font-weight:600; display:flex; align-items:center; gap:8px; }
-  .topbar .logo-icon { width:28px; height:28px; background:#1890ff; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:14px; }
-  .topbar .crumb { font-size:13px; color:rgba(255,255,255,0.65); margin-left:24px; }
-  .topbar .user { margin-left:auto; display:flex; align-items:center; gap:12px; font-size:13px; color:rgba(255,255,255,0.85); }
-  .user-badge { background:#1890ff; padding:2px 8px; border-radius:4px; font-size:11px; }
-  .user-avatar { width:30px; height:30px; border-radius:50%; background:#52c41a; display:flex; align-items:center; justify-content:center; font-size:12px; }
+  /* ============================================================
+   * TOPBAR
+   * ============================================================ */
+  .topbar {
+    background: var(--gray-900);
+    height: var(--topbar-h);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 16px;
+    color: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .topbar .logo {
+    font-size: 15px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    letter-spacing: 0.4px;
+    color: #fff;
+  }
+  .topbar .logo-icon {
+    width: 30px; height: 30px;
+    background: linear-gradient(135deg, var(--brand-500), #60a5fa);
+    border-radius: var(--radius-xs);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    color: #fff;
+  }
+  .topbar .crumb {
+    font-size: 12.5px;
+    color: var(--gray-400);
+    padding-left: 8px;
+    border-left: 1px solid rgba(255,255,255,0.1);
+  }
+  .topbar .crumb span { color: rgba(255,255,255,0.7); }
+  .topbar .user {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.8);
+  }
+  .user-badge {
+    background: rgba(255,255,255,0.12);
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    letter-spacing: 0.3px;
+    color: rgba(255,255,255,0.9);
+  }
+  .user-avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: var(--brand-600);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+  }
 
-  /* 布局 */
-  .layout { display:flex; min-height:calc(100vh - 56px); }
-  .sidebar { width:208px; background:#001529; padding:8px 0; }
-  .nav-group { margin-bottom:8px; }
-  .nav-title { padding:8px 24px; font-size:12px; color:rgba(255,255,255,0.45); text-transform:uppercase; letter-spacing:0.5px; }
-  .nav-item { display:flex; align-items:center; gap:10px; padding:10px 24px; font-size:14px; color:rgba(255,255,255,0.65); cursor:pointer; border-left:3px solid transparent; transition:all .2s; }
-  .nav-item:hover { color:#fff; background:#1890ff22; }
-  .nav-item.active { background:#1890ff22; color:#1890ff; border-left-color:#1890ff; }
-  .nav-icon { font-size:16px; width:20px; text-align:center; }
+  /* ============================================================
+   * LAYOUT
+   * ============================================================ */
+  .layout { display: flex; min-height: calc(100vh - var(--topbar-h)); }
+  .sidebar {
+    width: var(--sidebar-w);
+    background: var(--gray-900);
+    padding: 16px 0;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .nav-group { margin-bottom: 8px; }
+  .nav-group-label {
+    padding: 8px 20px 6px;
+    font-size: 10.5px;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 16px;
+    margin: 1px 10px;
+    font-size: 13.5px;
+    color: var(--gray-400);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all 0.18s var(--ease);
+    font-weight: 500;
+    position: relative;
+  }
+  .nav-item:hover { color: #e2e8f0; background: rgba(255,255,255,0.05); }
+  .nav-item.active {
+    color: #fff;
+    background: rgba(59,130,246,0.2);
+    font-weight: 600;
+  }
+  .nav-item.active::before {
+    content: "";
+    position: absolute;
+    left: -10px; top: 4px; bottom: 4px;
+    width: 3px;
+    background: var(--brand-500);
+    border-radius: 0 3px 3px 0;
+  }
+  .nav-icon { font-size: 15px; width: 20px; text-align: center; line-height: 1; flex-shrink: 0; }
 
-  /* 主内容区 */
-  .main { flex:1; padding:20px 24px; overflow:auto; }
-  .page-title { font-size:18px; font-weight:600; color:#262626; margin-bottom:16px; }
+  /* Sidebar footer */
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 12px 16px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    font-size: 11px;
+    color: var(--gray-500);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sidebar-footer .dot { width:6px; height:6px; border-radius:50%; background: var(--success); }
 
-  /* 统计卡片 */
-  .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
-  .stat-card { background:#fff; border-radius:2px; padding:20px; box-shadow:0 1px 2px rgba(0,0,0,0.05); display:flex; align-items:center; gap:16px; }
-  .stat-icon { width:48px; height:48px; border-radius:2px; display:flex; align-items:center; justify-content:center; font-size:22px; }
-  .stat-icon.blue { background:#e6f7ff; color:#1890ff; }
-  .stat-icon.green { background:#f6ffed; color:#52c41a; }
-  .stat-icon.orange { background:#fff7e6; color:#fa8c16; }
-  .stat-icon.red { background:#fff1f0; color:#f5222d; }
-  .stat-num { font-size:24px; font-weight:700; color:#262626; }
-  .stat-lbl { font-size:12px; color:#8c8c8c; margin-top:2px; }
+  /* ============================================================
+   * MAIN
+   * ============================================================ */
+  .main { flex: 1; padding: 28px 32px; overflow: auto; min-width: 0; }
 
-  /* 面板切换 */
-  .panel { display:none; }
-  .panel.active { display:block; }
+  /* ============================================================
+   * PANELS
+   * ============================================================ */
+  .panel { display: none; animation: fadeIn 0.22s var(--ease); }
+  .panel.active { display: block; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 
-  /* 卡片 */
-  .card { background:#fff; border-radius:2px; box-shadow:0 1px 2px rgba(0,0,0,0.05); margin-bottom:16px; }
-  .card-hd { padding:14px 20px; border-bottom:1px solid #f0f0f0; display:flex; align-items:center; justify-content:space-between; }
-  .card-hd h3 { font-size:14px; font-weight:600; color:#262626; }
-  .card-bd { padding:16px 20px; }
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .page-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--gray-800);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    letter-spacing: -0.3px;
+  }
+  .page-title .icon { font-size: 22px; }
 
-  /* 表格 */
-  table { width:100%; border-collapse:collapse; font-size:13px; }
-  th { background:#fafafa; padding:10px 16px; text-align:left; font-weight:600; color:#595959; border-bottom:1px solid #f0f0f0; }
-  td { padding:10px 16px; border-bottom:1px solid #f0f0f0; color:#595959; }
-  tr:hover { background:#fafafa; }
-  .txt-right { text-align:right; }
-  .txt-center { text-align:center; }
+  /* ============================================================
+   * STATS ROW
+   * ============================================================ */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card {
+    background: #fff;
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    box-shadow: var(--shadow-xs);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border: 1px solid var(--gray-200);
+    transition: all 0.2s var(--ease);
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::after {
+    content: "";
+    position: absolute;
+    top: 0; right: 0;
+    width: 64px; height: 64px;
+    border-radius: 0 0 0 64px;
+    opacity: 0.06;
+    transition: opacity 0.2s;
+  }
+  .stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+  .stat-card:hover::after { opacity: 0.1; }
+  .stat-card.blue::after  { background: var(--brand-500); }
+  .stat-card.green::after { background: var(--success); }
+  .stat-card.orange::after{ background: var(--warning); }
+  .stat-card.red::after   { background: var(--danger); }
 
-  /* 标签 */
-  .tag { display:inline-block; padding:2px 8px; border-radius:2px; font-size:12px; font-weight:500; }
-  .t-green { background:#f6ffed; color:#389e0d; border:1px solid #b7eb8f; }
-  .t-red { background:#fff1f0; color:#cf1322; border:1px solid #ffa39e; }
-  .t-blue { background:#e6f7ff; color:#096dd9; border:1px solid #91d5ff; }
-  .t-yellow { background:#fffbe6; color:#d48806; border:1px solid #ffe58f; }
-  .t-gray { background:#f5f5f5; color:#8c8c8c; border:1px solid #d9d9d9; }
+  .stat-icon {
+    width: 46px; height: 46px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .stat-icon.blue   { background: var(--brand-50);  color: var(--brand-600); }
+  .stat-icon.green  { background: var(--success-bg); color: var(--success); }
+  .stat-icon.orange { background: var(--warning-bg); color: var(--warning); }
+  .stat-icon.red    { background: var(--danger-bg);  color: var(--danger); }
+  .stat-num  { font-size: 28px; font-weight: 800; color: var(--gray-800); letter-spacing: -1px; line-height: 1; }
+  .stat-lbl  { font-size: 12.5px; color: var(--gray-500); margin-top: 3px; font-weight: 500; }
 
-  /* 按钮 */
-  .btn { padding:5px 12px; border-radius:2px; border:1px solid #d9d9d9; background:#fff; font-size:12px; color:#595959; cursor:pointer; }
-  .btn:hover { border-color:#1890ff; color:#1890ff; }
-  .btn-primary { background:#1890ff; border-color:#1890ff; color:#fff; }
-  .btn-primary:hover { background:#40a9ff; border-color:#40a9ff; color:#fff; }
-  .btn-danger { border-color:#f5222d; color:#f5222d; }
-  .btn-danger:hover { border-color:#ff4d4f; color:#ff4d4f; }
-  .btn-sm { padding:3px 8px; font-size:11px; }
+  /* ============================================================
+   * CARD
+   * ============================================================ */
+  .card {
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-xs);
+    margin-bottom: 16px;
+    border: 1px solid var(--gray-200);
+    overflow: hidden;
+  }
+  .card-hd {
+    padding: 15px 22px;
+    border-bottom: 1px solid var(--gray-100);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .card-hd h3 { font-size: 14px; font-weight: 700; color: var(--gray-800); letter-spacing: -0.2px; }
+  .card-bd { padding: 22px; }
+  .card-bd.zero { padding: 0; }
 
-  /* ========== 考勤日历组件 ========== */
-  .cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
-  .cal-month-label { font-size:16px; font-weight:600; color:#262626; }
-  .cal-nav-btn { padding:4px 12px; border:1px solid #d9d9d9; border-radius:2px; background:#fff; cursor:pointer; font-size:13px; color:#595959; }
-  .cal-nav-btn:hover { border-color:#1890ff; color:#1890ff; }
-  .cal-nav-btn:disabled { color:#bfbfbf; cursor:not-allowed; }
+  /* ============================================================
+   * TABLE
+   * ============================================================ */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    background: var(--gray-50);
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 700;
+    color: var(--gray-500);
+    border-bottom: 2px solid var(--gray-200);
+    font-size: 11.5px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+  tbody td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--gray-100);
+    color: var(--gray-600);
+    vertical-align: middle;
+  }
+  tbody tr { transition: background 0.15s; }
+  tbody tr:hover { background: var(--gray-50); }
+  tbody tr:last-child td { border-bottom: none; }
+  .txt-right { text-align: right; }
+  .txt-center { text-align: center; }
 
-  /* 员工选择器 */
-  .cal-emp-select { display:flex; align-items:center; gap:8px; font-size:13px; }
-  .cal-emp-select select { padding:4px 8px; border:1px solid #d9d9d9; border-radius:2px; font-size:13px; color:#262626; background:#fff; }
+  /* ============================================================
+   * TAGS
+   * ============================================================ */
+  .tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+  }
+  .t-green  { background: var(--success-bg); color: #059669; }
+  .t-red    { background: var(--danger-bg);  color: #dc2626; }
+  .t-blue   { background: var(--info-bg);   color: #7c3aed; }
+  .t-yellow { background: var(--warning-bg); color: #b45309; }
+  .t-gray   { background: var(--gray-100);  color: var(--gray-500); }
 
-  /* 星期头 */
-  .cal-weekdays { display:grid; grid-template-columns:repeat(7,1fr); gap:8px; margin-bottom:8px; text-align:center; }
-  .cal-weekday { font-size:12px; font-weight:600; color:#8c8c8c; padding:6px 0; }
-  .cal-weekday.weekend { color:#f5222d; }
+  /* ============================================================
+   * BUTTONS
+   * ============================================================ */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 15px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--gray-300);
+    background: #fff;
+    font-size: 12.5px;
+    color: var(--gray-700);
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.18s var(--ease);
+    white-space: nowrap;
+    letter-spacing: 0.1px;
+  }
+  .btn:hover { border-color: var(--brand-500); color: var(--brand-600); background: var(--brand-50); }
+  .btn-primary { background: var(--brand-600); border-color: var(--brand-600); color: #fff; }
+  .btn-primary:hover { background: var(--brand-700); border-color: var(--brand-700); color: #fff; }
+  .btn-danger  { border-color: #fecaca; color: #dc2626; }
+  .btn-danger:hover  { background: var(--danger-bg); border-color: #dc2626; color: #dc2626; }
+  .btn-sm { padding: 5px 11px; font-size: 11.5px; border-radius: var(--radius-xs); }
+  .btn-xs  { padding: 3px 8px; font-size: 11px; border-radius: var(--radius-xs); }
 
-  /* 日历网格 */
-  .cal-wrap { display:grid; grid-template-columns:repeat(7,1fr); gap:8px; }
-  .cal-day { background:#fafafa; border-radius:2px; padding:8px; text-align:center; font-size:12px; min-height:64px; border:1px solid #f0f0f0; display:flex; flex-direction:column; align-items:center; justify-content:center; transition:all .2s; }
-  .cal-day:hover { border-color:#1890ff; box-shadow:0 0 4px rgba(24,144,255,0.2); }
-  .cal-day.placeholder { background:transparent; border-color:transparent; }
-  .cal-day.placeholder:hover { border-color:transparent; box-shadow:none; }
-  .cal-day .d-num { font-weight:600; color:#262626; margin-bottom:4px; font-size:14px; }
-  .cal-day .d-status { font-size:11px; padding:1px 6px; border-radius:2px; display:inline-block; }
-  .d-normal { background:#f6ffed; color:#389e0d; }
-  .d-late { background:#fffbe6; color:#d48806; }
-  .d-absent { background:#fff1f0; color:#cf1322; }
-  .d-leave { background:#e6f7ff; color:#096dd9; }
-  .d-weekend { background:#f5f5f5; color:#bfbfbf; }
-  .d-norecord { background:#fafafa; color:#bfbfbf; border:1px dashed #e8e8e8; }
+  /* ============================================================
+   * CALENDAR
+   * ============================================================ */
+  .cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 22px;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .cal-month-label {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--gray-800);
+    min-width: 120px;
+    text-align: center;
+  }
+  .cal-nav-group { display: flex; align-items: center; gap: 4px; }
+  .cal-nav-btn {
+    padding: 7px 14px;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm);
+    background: #fff;
+    cursor: pointer;
+    font-size: 12.5px;
+    color: var(--gray-600);
+    font-weight: 500;
+    transition: all 0.18s var(--ease);
+  }
+  .cal-nav-btn:hover { border-color: var(--brand-500); color: var(--brand-600); background: var(--brand-50); }
+  .cal-emp-select {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--gray-500);
+  }
+  .cal-emp-select select {
+    padding: 7px 34px 7px 12px;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    color: var(--gray-800);
+    background: #fff;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .cal-emp-select select:focus {
+    outline: none;
+    border-color: var(--brand-500);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+  }
 
-  /* 图例 */
-  .cal-legend { display:flex; gap:16px; font-size:12px; flex-wrap:wrap; }
-  .cal-legend-item { display:flex; align-items:center; gap:4px; }
-  .cal-legend-dot { display:inline-block; width:10px; height:10px; border-radius:2px; }
+  /* Weekday header */
+  .cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px; text-align: center; }
+  .cal-weekday { font-size: 11px; font-weight: 700; color: var(--gray-400); padding: 10px 0; letter-spacing: 0.4px; text-transform: uppercase; }
+  .cal-weekday.weekend { color: var(--danger); opacity: 0.6; }
 
-  /* 审批流 */
-  .flow-line { display:flex; align-items:center; gap:10px; margin:16px 0; flex-wrap:wrap; }
-  .flow-node { background:#e6f7ff; color:#096dd9; padding:8px 14px; border-radius:2px; font-size:12px; font-weight:500; border:1px solid #91d5ff; }
-  .flow-node.done { background:#f6ffed; color:#389e0d; border-color:#b7eb8f; }
-  .flow-node.cur { background:#fffbe6; color:#d48806; border-color:#ffe58f; font-weight:700; }
-  .flow-arrow { color:#bfbfbf; font-size:14px; }
+  /* Calendar grid */
+  .cal-wrap { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-day {
+    background: #fff;
+    border-radius: var(--radius-sm);
+    padding: 7px 4px 9px;
+    text-align: center;
+    font-size: 12px;
+    min-height: 74px;
+    border: 1px solid #edf0f5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.18s var(--ease);
+    cursor: default;
+  }
+  .cal-day:not(.placeholder):hover {
+    border-color: var(--brand-300);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.08);
+    transform: translateY(-1px);
+  }
+  .cal-day.placeholder { background: transparent; border-color: transparent; pointer-events: none; }
+  .cal-day .d-num { font-weight: 800; color: var(--gray-800); margin-bottom: 5px; font-size: 14px; letter-spacing: -0.2px; }
+  .cal-day .d-status { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 700; letter-spacing: 0.2px; }
+  .d-normal   { background: var(--success-bg); color: #059669; }
+  .d-late     { background: var(--warning-bg); color: #b45309; }
+  .d-absent   { background: var(--danger-bg);  color: #dc2626; }
+  .d-leave    { background: var(--info-bg);    color: #6d28d9; }
+  .d-weekend  { background: var(--gray-100); color: var(--gray-400); }
+  .d-norecord { background: #fff; color: var(--gray-300); border-style: dashed; }
 
-  /* 时间轴 */
-  .tl-wrap { position:relative; padding-left:24px; }
-  .tl-wrap::before { content:""; position:absolute; left:6px; top:0; bottom:0; width:1px; background:#f0f0f0; }
-  .tl-item { position:relative; margin-bottom:16px; }
-  .tl-item::before { content:""; position:absolute; left:-22px; top:4px; width:8px; height:8px; border-radius:50%; background:#bfbfbf; border:2px solid #fff; }
-  .tl-item.done::before { background:#52c41a; }
-  .tl-time { font-size:11px; color:#8c8c8c; margin-bottom:2px; }
-  .tl-text { font-size:13px; color:#262626; }
+  /* Legend */
+  .cal-legend { display: flex; gap: 18px; font-size: 11.5px; flex-wrap: wrap; }
+  .cal-legend-item { display: flex; align-items: center; gap: 6px; color: var(--gray-500); font-weight: 500; }
+  .cal-legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
 
-  /* 图表区 */
-  .chart-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
-  .chart-card { background:#fff; border-radius:2px; box-shadow:0 1px 2px rgba(0,0,0,0.05); padding:16px 20px; }
-  .chart-hd { font-size:14px; font-weight:600; color:#262626; margin-bottom:12px; }
-  .bar-wrap { display:flex; align-items:flex-end; gap:10px; height:160px; padding:0 8px; }
-  .bar { flex:1; background:#1890ff; border-radius:2px 2px 0 0; position:relative; opacity:0.85; min-width:30px; }
-  .bar:hover { opacity:1; }
-  .bar-lbl { position:absolute; bottom:-18px; left:50%; transform:translateX(-50%); font-size:10px; color:#8c8c8c; white-space:nowrap; }
-  .pie-wrap { width:130px; height:130px; border-radius:50%; margin:0 auto; position:relative; }
-  .pie-c { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:13px; font-weight:700; color:#262626; }
-  .leg { display:flex; justify-content:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
-  .leg-i { display:flex; align-items:center; gap:3px; font-size:11px; color:#595959; }
-  .leg-dot { width:7px; height:7px; border-radius:50%; }
+  /* ============================================================
+   * APPROVAL FLOW
+   * ============================================================ */
+  .flow-line { display: flex; align-items: center; gap: 8px; margin: 4px 0; flex-wrap: wrap; }
+  .flow-node {
+    background: var(--gray-100);
+    color: var(--gray-500);
+    padding: 10px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--gray-200);
+    text-align: center;
+    min-width: 80px;
+    transition: all 0.2s;
+  }
+  .flow-node.done { background: var(--success-bg); color: #059669; border-color: #a7f3d0; }
+  .flow-node.cur  { background: var(--brand-50); color: var(--brand-700); border-color: var(--brand-200); font-weight: 700; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+  .flow-arrow { color: var(--gray-300); font-size: 16px; }
 
-  /* AI 摘要卡片 */
-  .ai-log { background:#f6ffed; border-left:3px solid #52c41a; padding:10px 14px; border-radius:0 2px 2px 0; margin:8px 0; font-size:12px; color:#262626; }
-  .ai-log .ai-hd { color:#389e0d; font-weight:600; margin-bottom:3px; font-size:11px; }
+  /* ============================================================
+   * TIMELINE
+   * ============================================================ */
+  .tl-wrap { position: relative; padding-left: 30px; }
+  .tl-wrap::before { content: ""; position: absolute; left: 10px; top: 6px; bottom: 0; width: 2px; background: var(--gray-200); border-radius: 1px; }
+  .tl-item { position: relative; margin-bottom: 20px; }
+  .tl-item:last-child { margin-bottom: 0; }
+  .tl-item::before {
+    content: ""; position: absolute;
+    left: -24px; top: 6px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--gray-300);
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px var(--gray-300);
+  }
+  .tl-item.done::before { background: var(--success); box-shadow: 0 0 0 2px #a7f3d0; }
+  .tl-time { font-size: 11px; color: var(--gray-400); margin-bottom: 4px; font-weight: 500; }
+  .tl-text { font-size: 13px; color: var(--gray-700); line-height: 1.6; }
 
-  /* 通知 */
-  .notice-item { display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid #f0f0f0; }
-  .notice-item:last-child { border-bottom:none; }
-  .notice-title { font-weight:600; color:#262626; font-size:13px; display:flex; align-items:center; gap:6px; }
-  .notice-dot { width:6px; height:6px; border-radius:50%; background:#f5222d; }
-  .notice-meta { font-size:12px; color:#8c8c8c; margin-top:2px; }
-  .notice-time { font-size:12px; color:#bfbfbf; }
+  /* ============================================================
+   * CHARTS
+   * ============================================================ */
+  .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .chart-card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow-xs); padding: 20px 22px; border: 1px solid var(--gray-200); }
+  .chart-hd { font-size: 13px; font-weight: 700; color: var(--gray-800); margin-bottom: 18px; }
+  .bar-wrap { display: flex; align-items: flex-end; gap: 16px; height: 170px; padding: 0 2px; }
+  .bar {
+    flex: 1;
+    background: linear-gradient(180deg, var(--brand-500) 0%, #93c5fd 100%);
+    border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+    position: relative;
+    opacity: 0.85;
+    min-width: 26px;
+    transition: opacity 0.2s, filter 0.2s;
+  }
+  .bar:hover { opacity: 1; filter: brightness(0.95); }
+  .bar-lbl { position: absolute; bottom: -22px; left: 50%; transform: translateX(-50%); font-size: 10.5px; color: var(--gray-500); white-space: nowrap; font-weight: 600; }
 
-  /* 加载提示 */
-  .cal-loading { text-align:center; padding:40px; color:#8c8c8c; font-size:13px; }
-  .cal-error { text-align:center; padding:40px; color:#f5222d; font-size:13px; }
+  .pie-wrap { width: 140px; height: 140px; border-radius: 50%; margin: 0 auto; position: relative; }
+  .pie-c {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-size: 14px; font-weight: 800; color: var(--gray-800);
+    background: #fff; width: 58px; height: 58px;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow-xs);
+  }
+  .leg { display: flex; justify-content: center; gap: 16px; margin-top: 14px; flex-wrap: wrap; }
+  .leg-i { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--gray-500); font-weight: 500; }
+  .leg-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* ============================================================
+   * AI LOG
+   * ============================================================ */
+  .ai-log {
+    background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+    border-left: 3px solid var(--success);
+    padding: 14px 18px;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 12.5px;
+    color: var(--gray-700);
+    line-height: 1.8;
+  }
+  .ai-log .ai-hd { color: #059669; font-weight: 700; margin-bottom: 6px; font-size: 11px; letter-spacing: 0.4px; text-transform: uppercase; }
+
+  /* ============================================================
+   * NOTICE
+   * ============================================================ */
+  .notice-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--gray-100);
+    gap: 16px;
+    transition: background 0.15s;
+  }
+  .notice-item:last-child { border-bottom: none; }
+  .notice-item:hover { background: var(--gray-50); margin: 0 -22px; padding-left: 22px; padding-right: 22px; border-radius: var(--radius-sm); }
+  .notice-title {
+    font-weight: 700;
+    color: var(--gray-800);
+    font-size: 13.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .notice-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); flex-shrink: 0; }
+  .notice-meta { font-size: 12.5px; color: var(--gray-500); margin-top: 3px; line-height: 1.5; }
+  .notice-time { font-size: 11.5px; color: var(--gray-400); white-space: nowrap; flex-shrink: 0; font-weight: 500; }
+
+  /* ============================================================
+   * STATUS / LOADING / ERROR
+   * ============================================================ */
+  .cal-loading { text-align: center; padding: 52px; color: var(--gray-400); font-size: 13px; }
+  .cal-loading::before { content: ""; display: block; width: 32px; height: 32px; border: 3px solid var(--gray-200); border-top-color: var(--brand-500); border-radius: 50%; animation: spin 0.65s linear infinite; margin: 0 auto 14px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .cal-error { text-align: center; padding: 52px; color: var(--danger); font-size: 13px; line-height: 1.7; }
+  .cal-error::before { content: "!"; display: block; width: 30px; height: 30px; border: 2px solid var(--danger); border-radius: 50%; margin: 0 auto 12px; font-weight: 800; font-size: 16px; line-height: 26px; }
+
+  /* ============================================================
+   * RESPONSIVE
+   * ============================================================ */
+  @media (max-width: 1200px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 900px) {
+    .chart-row { grid-template-columns: 1fr; }
+    .sidebar { width: 60px; }
+    .sidebar .nav-group-label,
+    .sidebar .nav-item span:not(.nav-icon),
+    .sidebar .sidebar-footer { display: none; }
+    .sidebar .nav-item { justify-content: center; padding: 12px; margin: 1px 4px; }
+    .main { padding: 20px; }
+    .stats-row { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .cal-header { flex-direction: column; align-items: flex-start; }
+  }
+  @media (max-width: 560px) {
+    .stats-row { grid-template-columns: 1fr; }
+    .flow-line { flex-direction: column; align-items: flex-start; }
+    .flow-arrow { transform: rotate(90deg); }
+  }
 </style>
 </head>
 <body>
 
-<!-- ========== 顶部导航栏 ========== -->
-<div class="topbar">
+<!-- ============================================================
+     TOPBAR
+     ============================================================ -->
+<header class="topbar">
   <div class="logo"><div class="logo-icon">OA</div>OA协同办公平台</div>
   <div class="crumb">首页 / <span id="crumbText">工作台</span></div>
-  <div class="user"><span class="user-badge">管理员</span><span>admin</span><div class="user-avatar">管</div></div>
-</div>
+  <div class="user"><span class="user-badge">管理员</span>admin<div class="user-avatar">管</div></div>
+</header>
 
-<!-- ========== 主布局 ========== -->
+<!-- ============================================================
+     LAYOUT
+     ============================================================ -->
 <div class="layout">
-  <nav class="sidebar">
+  <aside class="sidebar">
     <div class="nav-group">
-      <div class="nav-title">工作台</div>
+      <div class="nav-group-label">工作区</div>
       <div class="nav-item active" onclick="switchTab(0,this)">
-        <span class="nav-icon">&#x1F4CB;</span>工作台
+        <span class="nav-icon">📋</span>工作台
       </div>
       <div class="nav-item" onclick="switchTab(1,this)">
-        <span class="nav-icon">&#x1F4C5;</span>考勤日历
+        <span class="nav-icon">📅</span>考勤日历
       </div>
       <div class="nav-item" onclick="switchTab(2,this)">
-        <span class="nav-icon">&#x1F4CA;</span>数据看板
+        <span class="nav-icon">📊</span>数据看板
       </div>
     </div>
     <div class="nav-group">
-      <div class="nav-title">业务流程</div>
+      <div class="nav-group-label">业务流</div>
       <div class="nav-item" onclick="switchTab(3,this)">
-        <span class="nav-icon">&#x1F4DD;</span>审批流
+        <span class="nav-icon">📝</span>审批流
       </div>
       <div class="nav-item" onclick="switchTab(4,this)">
-        <span class="nav-icon">&#x1F514;</span>通知中心
+        <span class="nav-icon">🔔</span>通知中心
       </div>
     </div>
-  </nav>
+    <div class="sidebar-footer">
+      <span class="dot"></span> 系统运行中 · v1.0
+    </div>
+  </aside>
 
   <main class="main">
 
     <!-- ==================== 面板0：工作台 ==================== -->
     <div class="panel active" id="panel0">
-      <div class="page-title">&#x1F4CB; 我的工作台</div>
+      <div class="page-header">
+        <div class="page-title"><span class="icon">📋</span>我的工作台</div>
+      </div>
       <div class="stats-row">
-        <div class="stat-card">
-          <div class="stat-icon blue">&#x1F465;</div>
+        <div class="stat-card blue">
+          <div class="stat-icon blue">👥</div>
           <div><div class="stat-num">156</div><div class="stat-lbl">员工总数</div></div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon green">&#x2705;</div>
+        <div class="stat-card green">
+          <div class="stat-icon green">✅</div>
           <div><div class="stat-num">142</div><div class="stat-lbl">本月出勤</div></div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon orange">&#x23F3;</div>
+        <div class="stat-card orange">
+          <div class="stat-icon orange">⏳</div>
           <div><div class="stat-num">8</div><div class="stat-lbl">待审批</div></div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon red">&#x26A0;&#xFE0F;</div>
+        <div class="stat-card red">
+          <div class="stat-icon red">⚠️</div>
           <div><div class="stat-num">3</div><div class="stat-lbl">异常考勤</div></div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-hd"><h3>我的待办</h3></div>
-        <div class="card-bd" style="padding:0;">
+        <div class="card-hd"><h3>我的待办</h3><span style="font-size:12px;color:var(--gray-400);">4条记录</span></div>
+        <div class="card-bd zero">
           <table>
-            <tr><th>类型</th><th>标题</th><th>申请人</th><th>时间</th><th>状态</th><th class="txt-center">操作</th></tr>
+            <thead><tr><th>类型</th><th>标题</th><th>申请人</th><th>时间</th><th>状态</th><th class="txt-center">操作</th></tr></thead>
+            <tbody>
             <tr>
               <td><span class="tag t-yellow">报销审批</span></td>
               <td>差旅费报销-北京出差</td><td>张三</td><td>2026-05-19 09:30</td>
               <td><span class="tag t-yellow">待审批</span></td>
-              <td class="txt-center"><button class="btn btn-primary btn-sm">审批</button></td>
+              <td class="txt-center"><button class="btn btn-primary btn-xs">审批</button></td>
             </tr>
             <tr>
               <td><span class="tag t-blue">请假审批</span></td>
               <td>病假申请-5月20日</td><td>李四</td><td>2026-05-19 08:15</td>
               <td><span class="tag t-yellow">待审批</span></td>
-              <td class="txt-center"><button class="btn btn-primary btn-sm">审批</button></td>
+              <td class="txt-center"><button class="btn btn-primary btn-xs">审批</button></td>
             </tr>
             <tr>
               <td><span class="tag t-green">会议通知</span></td>
               <td>产品评审会-5月20日14:00</td><td>王五</td><td>2026-05-19 10:00</td>
               <td><span class="tag t-blue">待参加</span></td>
-              <td class="txt-center"><button class="btn btn-sm">详情</button></td>
+              <td class="txt-center"><button class="btn btn-xs">详情</button></td>
             </tr>
             <tr>
               <td><span class="tag t-gray">公告</span></td>
               <td>端午节放假通知</td><td>行政部</td><td>2026-05-18 17:00</td>
               <td><span class="tag t-green">已读</span></td>
-              <td class="txt-center"><button class="btn btn-sm">查看</button></td>
+              <td class="txt-center"><button class="btn btn-xs">查看</button></td>
             </tr>
+            </tbody>
           </table>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-hd"><h3>员工档案</h3></div>
-        <div class="card-bd" style="padding:0;">
+        <div class="card-hd"><h3>员工档案</h3><span style="font-size:12px;color:var(--gray-400);">5条记录</span></div>
+        <div class="card-bd zero">
           <table>
-            <tr><th>工号</th><th>姓名</th><th>部门</th><th>职位</th><th>入职日期</th><th>状态</th><th class="txt-center">操作</th></tr>
-            <tr><td>E2024001</td><td>张三</td><td>研发部</td><td>Java工程师</td><td>2024-03-01</td><td><span class="tag t-green">在职</span></td><td class="txt-center"><button class="btn btn-sm">详情</button></td></tr>
-            <tr><td>E2024002</td><td>李四</td><td>市场部</td><td>销售经理</td><td>2023-06-15</td><td><span class="tag t-green">在职</span></td><td class="txt-center"><button class="btn btn-sm">详情</button></td></tr>
-            <tr><td>E2024003</td><td>王五</td><td>产品部</td><td>产品经理</td><td>2024-01-10</td><td><span class="tag t-green">在职</span></td><td class="txt-center"><button class="btn btn-sm">详情</button></td></tr>
-            <tr><td>E2024004</td><td>赵六</td><td>财务部</td><td>财务主管</td><td>2022-09-01</td><td><span class="tag t-green">在职</span></td><td class="txt-center"><button class="btn btn-sm">详情</button></td></tr>
-            <tr><td>E2024005</td><td>孙七</td><td>人事部</td><td>HRBP</td><td>2023-12-01</td><td><span class="tag t-yellow">试用期</span></td><td class="txt-center"><button class="btn btn-sm">详情</button></td></tr>
+            <thead><tr><th>工号</th><th>姓名</th><th>部门</th><th>职位</th><th>入职日期</th><th>状态</th><th class="txt-center">操作</th></tr></thead>
+            <tbody>
+            <tr><td>E2024001</td><td>张三</td><td>研发部</td><td>Java工程师</td><td>2024-03-01</td><td><span class="tag t-green">在职</span></td><td class="txt-center"><button class="btn btn-xs">详情</button></td></tr>
+            <tr><td>E2024002</td><td>李四</td><td>市场部</td><td>销售经理</td><td>2023-06-15</td><td><span class="tag t-green">在职</span></td><td class="txt-center"><button class="btn btn-xs">详情</button></td></tr>
+            <tr><td>E2024003</td><td>王五</td><td>产品部</td><td>产品经理</td><td>2024-01-10</td><td><span class="tag t-green">在职</span></td><td class="txt-center"><button class="btn btn-xs">详情</button></td></tr>
+            <tr><td>E2024004</td><td>赵六</td><td>财务部</td><td>财务主管</td><td>2022-09-01</td><td><span class="tag t-green">在职</span></td><td class="txt-center"><button class="btn btn-xs">详情</button></td></tr>
+            <tr><td>E2024005</td><td>孙七</td><td>人事部</td><td>HRBP</td><td>2023-12-01</td><td><span class="tag t-yellow">试用期</span></td><td class="txt-center"><button class="btn btn-xs">详情</button></td></tr>
+            </tbody>
           </table>
         </div>
       </div>
@@ -269,26 +743,28 @@
 
     <!-- ==================== 面板1：考勤日历 ==================== -->
     <div class="panel" id="panel1">
-      <div class="page-title">&#x1F4C5; 考勤日历</div>
+      <div class="page-header">
+        <div class="page-title"><span class="icon">📅</span>考勤日历</div>
+      </div>
 
-      <!-- 日历主体卡片 -->
       <div class="card">
         <div class="card-hd">
-          <h3>打卡状态标记</h3>
+          <h3>打卡标记</h3>
           <div class="cal-legend">
-            <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#f6ffed;border:1px solid #b7eb8f;"></span>正常</div>
-            <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#fffbe6;border:1px solid #ffe58f;"></span>迟到</div>
-            <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#fff1f0;border:1px solid #ffa39e;"></span>缺卡</div>
-            <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#e6f7ff;border:1px solid #91d5ff;"></span>请假</div>
-            <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#f5f5f5;border:1px solid #e8e8e8;"></span>周末</div>
+            <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#10b981;"></span>正常</div>
+            <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#f59e0b;"></span>迟到</div>
+            <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#ef4444;"></span>缺卡</div>
+            <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#8b5cf6;"></span>请假</div>
+            <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#cbd5e1;"></span>周末</div>
           </div>
         </div>
         <div class="card-bd">
-          <!-- 月份导航 + 员工选择 -->
           <div class="cal-header">
-            <button class="cal-nav-btn" onclick="prevMonth()" title="上一月">&lt; 上一月</button>
-            <span class="cal-month-label" id="calMonthLabel">2026年5月</span>
-            <button class="cal-nav-btn" onclick="nextMonth()" title="下一月">下一月 &gt;</button>
+            <div class="cal-nav-group">
+              <button class="cal-nav-btn" onclick="prevMonth()">← 上一月</button>
+              <span class="cal-month-label" id="calMonthLabel">2026年5月</span>
+              <button class="cal-nav-btn" onclick="nextMonth()">下一月 →</button>
+            </div>
             <div class="cal-emp-select">
               <label for="empSelect">查看员工：</label>
               <select id="empSelect" onchange="loadCalendar()">
@@ -301,43 +777,36 @@
             </div>
           </div>
 
-          <!-- 星期表头 -->
           <div class="cal-weekdays">
-            <div class="cal-weekday">一</div>
-            <div class="cal-weekday">二</div>
-            <div class="cal-weekday">三</div>
-            <div class="cal-weekday">四</div>
+            <div class="cal-weekday">一</div><div class="cal-weekday">二</div>
+            <div class="cal-weekday">三</div><div class="cal-weekday">四</div>
             <div class="cal-weekday">五</div>
-            <div class="cal-weekday weekend">六</div>
-            <div class="cal-weekday weekend">日</div>
+            <div class="cal-weekday weekend">六</div><div class="cal-weekday weekend">日</div>
           </div>
-
-          <!-- 日历网格 -->
           <div class="cal-wrap" id="calGrid">
             <div class="cal-loading">加载中...</div>
           </div>
         </div>
       </div>
 
-      <!-- 月度考勤统计卡片 -->
       <div class="card">
         <div class="card-hd"><h3>本月考勤统计</h3></div>
         <div class="card-bd">
           <div class="stats-row">
-            <div class="stat-card">
-              <div class="stat-icon green">&#x1F4C5;</div>
+            <div class="stat-card green">
+              <div class="stat-icon green">📅</div>
               <div><div class="stat-num" id="statAttendanceDays">0</div><div class="stat-lbl">出勤天数</div></div>
             </div>
-            <div class="stat-card">
-              <div class="stat-icon orange">&#x23F0;</div>
+            <div class="stat-card orange">
+              <div class="stat-icon orange">⏰</div>
               <div><div class="stat-num" id="statLateDays">0</div><div class="stat-lbl">迟到次数</div></div>
             </div>
-            <div class="stat-card">
-              <div class="stat-icon red">&#x274C;</div>
+            <div class="stat-card red">
+              <div class="stat-icon red">❌</div>
               <div><div class="stat-num" id="statMissingDays">0</div><div class="stat-lbl">缺卡次数</div></div>
             </div>
-            <div class="stat-card">
-              <div class="stat-icon blue">&#x1F4DD;</div>
+            <div class="stat-card blue">
+              <div class="stat-icon blue">📝</div>
               <div><div class="stat-num" id="statLeaveDays">0</div><div class="stat-lbl">请假天数</div></div>
             </div>
           </div>
@@ -347,12 +816,14 @@
 
     <!-- ==================== 面板2：数据看板 ==================== -->
     <div class="panel" id="panel2">
-      <div class="page-title">&#x1F4CA; 经营分析驾驶舱</div>
+      <div class="page-header">
+        <div class="page-title"><span class="icon">📊</span>经营分析驾驶舱</div>
+      </div>
       <div class="stats-row">
-        <div class="stat-card"><div class="stat-icon blue">&#x1F465;</div><div><div class="stat-num">156</div><div class="stat-lbl">员工总数</div></div></div>
-        <div class="stat-card"><div class="stat-icon green">&#x2705;</div><div><div class="stat-num">142</div><div class="stat-lbl">本月出勤</div></div></div>
-        <div class="stat-card"><div class="stat-icon orange">&#x23F3;</div><div><div class="stat-num">8</div><div class="stat-lbl">待审批</div></div></div>
-        <div class="stat-card"><div class="stat-icon red">&#x26A0;&#xFE0F;</div><div><div class="stat-num">3</div><div class="stat-lbl">异常考勤</div></div></div>
+        <div class="stat-card blue"><div class="stat-icon blue">👥</div><div><div class="stat-num">156</div><div class="stat-lbl">员工总数</div></div></div>
+        <div class="stat-card green"><div class="stat-icon green">✅</div><div><div class="stat-num">142</div><div class="stat-lbl">本月出勤</div></div></div>
+        <div class="stat-card orange"><div class="stat-icon orange">⏳</div><div><div class="stat-num">8</div><div class="stat-lbl">待审批</div></div></div>
+        <div class="stat-card red"><div class="stat-icon red">⚠️</div><div><div class="stat-num">3</div><div class="stat-lbl">异常考勤</div></div></div>
       </div>
       <div class="chart-row">
         <div class="chart-card">
@@ -362,21 +833,21 @@
             <div class="bar" style="height:50%;"><div class="bar-lbl">市场部</div></div>
             <div class="bar" style="height:40%;"><div class="bar-lbl">产品部</div></div>
             <div class="bar" style="height:30%;"><div class="bar-lbl">财务部</div></div>
-            <div class="bar" style="height:20%;"><div class="bar-lbl">人事部</div></div>
+            <div class="bar" style="height:25%;"><div class="bar-lbl">人事部</div></div>
           </div>
         </div>
         <div class="chart-card">
           <div class="chart-hd">请假类型分布</div>
-          <div style="display:flex; align-items:center; justify-content:center; height:180px;">
-            <div class="pie-wrap" style="background:conic-gradient(#1890ff 0% 35%, #52c41a 35% 60%, #fa8c16 60% 80%, #f5222d 80% 100%);">
+          <div style="display:flex;align-items:center;justify-content:center;height:180px;">
+            <div class="pie-wrap" style="background:conic-gradient(#3b82f6 0% 35%, #10b981 35% 60%, #f59e0b 60% 80%, #8b5cf6 80% 100%);">
               <div class="pie-c">45次</div>
             </div>
           </div>
           <div class="leg">
-            <div class="leg-i"><div class="leg-dot" style="background:#1890ff;"></div>病假 35%</div>
-            <div class="leg-i"><div class="leg-dot" style="background:#52c41a;"></div>事假 25%</div>
-            <div class="leg-i"><div class="leg-dot" style="background:#fa8c16;"></div>年假 20%</div>
-            <div class="leg-i"><div class="leg-dot" style="background:#f5222d;"></div>调休 20%</div>
+            <div class="leg-i"><div class="leg-dot" style="background:#3b82f6;"></div>病假 35%</div>
+            <div class="leg-i"><div class="leg-dot" style="background:#10b981;"></div>事假 25%</div>
+            <div class="leg-i"><div class="leg-dot" style="background:#f59e0b;"></div>年假 20%</div>
+            <div class="leg-i"><div class="leg-dot" style="background:#8b5cf6;"></div>调休 20%</div>
           </div>
         </div>
       </div>
@@ -387,22 +858,24 @@
             <div class="bar" style="height:40%;"><div class="bar-lbl">12月</div></div>
             <div class="bar" style="height:55%;"><div class="bar-lbl">1月</div></div>
             <div class="bar" style="height:45%;"><div class="bar-lbl">2月</div></div>
-            <div class="bar" style="height:60%;"><div class="bar-lbl">3月</div></div>
-            <div class="bar" style="height:75%;"><div class="bar-lbl">4月</div></div>
-            <div class="bar" style="height:65%;"><div class="bar-lbl">5月</div></div>
+            <div class="bar" style="height:65%;"><div class="bar-lbl">3月</div></div>
+            <div class="bar" style="height:78%;"><div class="bar-lbl">4月</div></div>
+            <div class="bar" style="height:68%;"><div class="bar-lbl">5月</div></div>
           </div>
         </div>
       </div>
       <div class="card">
-        <div class="card-hd"><h3>本月报销金额Top5</h3></div>
-        <div class="card-bd" style="padding:0;">
+        <div class="card-hd"><h3>本月报销金额 Top 5</h3></div>
+        <div class="card-bd zero">
           <table>
-            <tr><th class="txt-center">排名</th><th>姓名</th><th>部门</th><th class="txt-center">报销次数</th><th class="txt-right">报销金额</th><th>状态</th></tr>
+            <thead><tr><th class="txt-center">#</th><th>姓名</th><th>部门</th><th class="txt-center">次数</th><th class="txt-right">金额</th><th>状态</th></tr></thead>
+            <tbody>
             <tr><td class="txt-center">1</td><td>张三</td><td>研发部</td><td class="txt-center">5</td><td class="txt-right">¥8,560</td><td><span class="tag t-green">已审批</span></td></tr>
             <tr><td class="txt-center">2</td><td>李四</td><td>市场部</td><td class="txt-center">4</td><td class="txt-right">¥6,230</td><td><span class="tag t-green">已审批</span></td></tr>
             <tr><td class="txt-center">3</td><td>王五</td><td>产品部</td><td class="txt-center">3</td><td class="txt-right">¥4,890</td><td><span class="tag t-yellow">待审批</span></td></tr>
             <tr><td class="txt-center">4</td><td>赵六</td><td>财务部</td><td class="txt-center">2</td><td class="txt-right">¥3,450</td><td><span class="tag t-green">已审批</span></td></tr>
             <tr><td class="txt-center">5</td><td>孙七</td><td>人事部</td><td class="txt-center">2</td><td class="txt-right">¥2,180</td><td><span class="tag t-yellow">待审批</span></td></tr>
+            </tbody>
           </table>
         </div>
       </div>
@@ -410,63 +883,72 @@
 
     <!-- ==================== 面板3：审批流 ==================== -->
     <div class="panel" id="panel3">
-      <div class="page-title">&#x1F4DD; 费用报销审批流</div>
+      <div class="page-header">
+        <div class="page-title"><span class="icon">📝</span>费用报销审批流</div>
+      </div>
       <div class="card">
-        <div class="card-hd"><h3>审批状态：BX20250519001（已通过）</h3></div>
+        <div class="card-hd"><h3>BX20250519001 审批进度</h3><span class="tag t-green">✅ 已通过</span></div>
         <div class="card-bd">
           <div class="flow-line">
-            <div class="flow-node">提交申请<br><span style="font-size:10px;">PENDING</span></div>
+            <div class="flow-node done">提交申请</div>
             <div class="flow-arrow">→</div>
-            <div class="flow-node done">直属经理审批<br><span style="font-size:10px;">MANAGER_APPROVED</span></div>
+            <div class="flow-node done">经理审批</div>
             <div class="flow-arrow">→</div>
-            <div class="flow-node done">财务审批<br><span style="font-size:10px;">FINANCE_APPROVED</span></div>
+            <div class="flow-node done">财务审批</div>
             <div class="flow-arrow">→</div>
-            <div class="flow-node cur">出纳打款<br><span style="font-size:10px;">COMPLETED</span></div>
-            <div style="margin-left:auto; font-size:12px; color:#52c41a; font-weight:600;">&#x2705; 已通过</div>
+            <div class="flow-node cur">出纳打款</div>
           </div>
         </div>
       </div>
       <div class="card">
-        <div class="card-hd"><h3>待审批报销单（经理视角）</h3></div>
-        <div class="card-bd" style="padding:0;">
+        <div class="card-hd"><h3>待审批报销单</h3></div>
+        <div class="card-bd zero">
           <table>
-            <tr><th>单号</th><th>申请人</th><th>部门</th><th class="txt-right">金额</th><th>类型</th><th>状态</th><th class="txt-center">操作</th></tr>
+            <thead><tr><th>单号</th><th>申请人</th><th>部门</th><th class="txt-right">金额</th><th>类型</th><th>状态</th><th class="txt-center">操作</th></tr></thead>
+            <tbody>
             <tr>
               <td>BX20250519001</td><td>张三</td><td>研发部</td><td class="txt-right">¥2,350</td><td>差旅费</td>
               <td><span class="tag t-yellow">待经理审批</span></td>
-              <td class="txt-center"><button class="btn btn-primary btn-sm">通过</button> <button class="btn btn-danger btn-sm">驳回</button></td>
+              <td class="txt-center">
+                <button class="btn btn-primary btn-xs">通过</button>
+                <button class="btn btn-danger btn-xs">驳回</button>
+              </td>
             </tr>
             <tr>
               <td>BX20250518002</td><td>李四</td><td>市场部</td><td class="txt-right">¥1,680</td><td>招待费</td>
               <td><span class="tag t-yellow">待经理审批</span></td>
-              <td class="txt-center"><button class="btn btn-primary btn-sm">通过</button> <button class="btn btn-danger btn-sm">驳回</button></td>
+              <td class="txt-center">
+                <button class="btn btn-primary btn-xs">通过</button>
+                <button class="btn btn-danger btn-xs">驳回</button>
+              </td>
             </tr>
             <tr>
               <td>BX20250517003</td><td>王五</td><td>产品部</td><td class="txt-right">¥890</td><td>办公用品</td>
               <td><span class="tag t-blue">待财务审批</span></td>
-              <td class="txt-center"><button class="btn btn-sm">查看</button></td>
+              <td class="txt-center"><button class="btn btn-xs">查看</button></td>
             </tr>
+            </tbody>
           </table>
         </div>
       </div>
       <div class="card">
-        <div class="card-hd"><h3>审批历史记录（BX20250519001）</h3></div>
+        <div class="card-hd"><h3>BX20250519001 审批记录</h3></div>
         <div class="card-bd">
           <div class="tl-wrap">
-            <div class="tl-item done"><div class="tl-time">2026-05-19 09:30</div><div class="tl-text">张三 提交报销申请，金额 ¥2,350（差旅费-北京出差），状态：PENDING</div></div>
-            <div class="tl-item done"><div class="tl-time">2026-05-19 10:15</div><div class="tl-text">直属经理 赵六 审批通过："同意报销，请走财务流程"</div></div>
-            <div class="tl-item done"><div class="tl-time">2026-05-19 11:00</div><div class="tl-text">财务 孙七 审批通过："发票合规，金额无误，同意付款"</div></div>
-            <div class="tl-item done"><div class="tl-time">2026-05-19 14:30</div><div class="tl-text">出纳 周八 完成打款：¥2,350 已转账至工资卡，状态更新为 COMPLETED</div></div>
+            <div class="tl-item done"><div class="tl-time">2026-05-19 09:30</div><div class="tl-text">张三 提交报销申请，金额 ¥2,350（差旅费-北京出差）</div></div>
+            <div class="tl-item done"><div class="tl-time">2026-05-19 10:15</div><div class="tl-text">赵六（经理）审批通过："同意报销，请走财务流程"</div></div>
+            <div class="tl-item done"><div class="tl-time">2026-05-19 11:00</div><div class="tl-text">孙七（财务）审批通过："发票合规，金额无误，同意付款"</div></div>
+            <div class="tl-item done"><div class="tl-time">2026-05-19 14:30</div><div class="tl-text">出纳 周八 完成打款，¥2,350 已转账至工资卡</div></div>
           </div>
         </div>
       </div>
       <div class="card">
-        <div class="card-hd"><h3>AI智能审批摘要</h3></div>
+        <div class="card-hd"><h3>AI 智能审批摘要</h3></div>
         <div class="card-bd">
           <div class="ai-log">
-            <div class="ai-hd">&#x1F916; DeepSeek生成审批意见摘要</div>
+            <div class="ai-hd">🤖 DeepSeek 审批意见摘要</div>
             原始意见："经核实，该员工于5月15日-17日赴北京参加技术峰会，往返机票及酒店费用共计2350元，发票齐全且符合公司差旅标准，同意按标准报销。"<br><br>
-            AI摘要：<b>"北京出差3天，发票合规，金额2350元，符合标准，建议通过。"</b>（20字）
+            <strong>AI摘要（20字）：</strong>北京出差3天，发票合规，金额2350元，符合标准，建议通过。
           </div>
         </div>
       </div>
@@ -474,20 +956,22 @@
 
     <!-- ==================== 面板4：通知中心 ==================== -->
     <div class="panel" id="panel4">
-      <div class="page-title">&#x1F514; 消息通知中心</div>
+      <div class="page-header">
+        <div class="page-title"><span class="icon">🔔</span>消息通知中心</div>
+      </div>
       <div class="card">
-        <div class="card-hd"><h3>未读消息</h3><span style="font-size:12px; color:#f5222d; font-weight:600;">2条未读</span></div>
+        <div class="card-hd"><h3>全部消息</h3><span class="tag t-red">2条未读</span></div>
         <div class="card-bd">
           <div class="notice-item">
             <div>
-              <div class="notice-title"><div class="notice-dot"></div>报销审批通过</div>
+              <div class="notice-title"><span class="notice-dot"></span>报销审批通过</div>
               <div class="notice-meta">您的差旅费报销单 BX20250519001 已通过财务审批，预计3个工作日内到账</div>
             </div>
             <div class="notice-time">10分钟前</div>
           </div>
           <div class="notice-item">
             <div>
-              <div class="notice-title"><div class="notice-dot"></div>会议提醒</div>
+              <div class="notice-title"><span class="notice-dot"></span>会议提醒</div>
               <div class="notice-meta">产品评审会将于5月20日14:00在3号会议室举行，请准时参加</div>
             </div>
             <div class="notice-time">1小时前</div>
@@ -515,163 +999,81 @@
 
 <script>
 /* ================================================================
- * OA协同办公平台 - 前端交互脚本
- * 负责面板切换、考勤日历API调用、日历渲染与统计展示
+ * OA协同办公平台 — 交互脚本
  * ================================================================ */
-
-// ---------- 全局状态 ----------
 var currentYear  = new Date().getFullYear();
-var currentMonth = new Date().getMonth() + 1; // JavaScript月份0-based
+var currentMonth = new Date().getMonth() + 1;
 
-// ---------- 面板切换 ----------
-/**
- * 切换主内容区面板
- * @param {number} n - 面板索引 0~4
- * @param {Element} el - 触发点击的导航项DOM元素
- */
 function switchTab(n, el) {
-  document.querySelectorAll('.panel').forEach(function(p, i) {
-    p.classList.toggle('active', i === n);
-  });
-  document.querySelectorAll('.nav-item').forEach(function(i) {
-    i.classList.remove('active');
-  });
+  document.querySelectorAll('.panel').forEach(function(p, i) { p.classList.toggle('active', i === n); });
+  document.querySelectorAll('.nav-item').forEach(function(i) { i.classList.remove('active'); });
   if (el) el.classList.add('active');
   var titles = ['工作台', '考勤日历', '数据看板', '审批流', '通知中心'];
   document.getElementById('crumbText').textContent = titles[n];
-
-  // 切换到考勤日历时自动加载数据
-  if (n === 1) {
-    loadCalendar();
-  }
+  if (n === 1) loadCalendar();
 }
 
-// ---------- 考勤日历 API 调用 ----------
-/**
- * 从后端API加载考勤日历数据并渲染
- * 调用 /api/attendance/calendar 接口获取指定员工指定月份的打卡记录
- * @param {void}
- * @returns {void}
- */
 function loadCalendar() {
   var empId = document.getElementById('empSelect').value;
-  var url = '/api/attendance/calendar?empId=' + empId
-            + '&year=' + currentYear + '&month=' + currentMonth;
-
-  // 更新月份标签
+  var url = '/api/attendance/calendar?empId=' + empId + '&year=' + currentYear + '&month=' + currentMonth;
   document.getElementById('calMonthLabel').textContent = currentYear + '年' + currentMonth + '月';
-
-  // 显示加载状态
   document.getElementById('calGrid').innerHTML = '<div class="cal-loading">加载中...</div>';
 
   fetch(url)
-    .then(function(response) {
-      if (!response.ok) {
-        throw new Error('HTTP ' + response.status);
-      }
-      return response.json();
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
     })
-    .then(function(result) {
-      if (result.code === 200) {
-        renderCalendar(result.data);
-        updateStats(result.data.stats);
+    .then(function(res) {
+      if (res.code === 200) {
+        renderCalendar(res.data);
+        updateStats(res.data.stats);
       } else {
-        document.getElementById('calGrid').innerHTML =
-          '<div class="cal-error">数据加载失败：' + result.msg + '</div>';
+        document.getElementById('calGrid').innerHTML = '<div class="cal-error">数据加载失败：' + res.msg + '</div>';
       }
     })
-    .catch(function(err) {
-      document.getElementById('calGrid').innerHTML =
-        '<div class="cal-error">网络请求失败，请确认后端服务已启动。<br>错误信息：' + err.message + '</div>';
+    .catch(function(e) {
+      document.getElementById('calGrid').innerHTML = '<div class="cal-error">网络请求失败，请确认后端服务已启动。<br>错误信息：' + e.message + '</div>';
     });
 }
 
-// ---------- 日历网格渲染 ----------
-/**
- * 根据API返回数据渲染日历网格
- * 状态映射：1-正常 2-迟到 3-缺卡 4-请假 0-周末 5-无记录
- * @param {Object} data - 后端返回的日历数据
- */
 function renderCalendar(data) {
-  var days = data.calendarDays;
-  var html = '';
-
+  var days = data.calendarDays, html = '';
   for (var i = 0; i < days.length; i++) {
-    var day = days[i];
-
-    // 空白占位格（月初补齐星期）
-    if (day === null) {
-      html += '<div class="cal-day placeholder"></div>';
-      continue;
+    var d = days[i];
+    if (d === null) { html += '<div class="cal-day placeholder"></div>'; continue; }
+    var cls;
+    switch (d.status) {
+      case 1: cls = 'd-normal'; break;
+      case 2: cls = 'd-late'; break;
+      case 3: cls = 'd-absent'; break;
+      case 4: cls = 'd-leave'; break;
+      case 0: cls = 'd-weekend'; break;
+      default: cls = 'd-norecord';
     }
-
-    var status = day.status;
-    var statusClass = '';
-    var statusText = day.statusText || '';
-
-    // 根据状态码确定CSS类名
-    switch (status) {
-      case 1: statusClass = 'd-normal'; break;    // 正常
-      case 2: statusClass = 'd-late'; break;      // 迟到
-      case 3: statusClass = 'd-absent'; break;    // 缺卡
-      case 4: statusClass = 'd-leave'; break;     // 请假
-      case 0: statusClass = 'd-weekend'; break;   // 周末
-      default: statusClass = 'd-norecord'; break; // 无记录
-    }
-
-    html += '<div class="cal-day">'
-          +   '<div class="d-num">' + day.day + '</div>'
-          +   '<div class="d-status ' + statusClass + '">' + statusText + '</div>'
-          + '</div>';
+    html += '<div class="cal-day"><div class="d-num">' + d.day + '</div><div class="d-status ' + cls + '">' + (d.statusText || '') + '</div></div>';
   }
-
   document.getElementById('calGrid').innerHTML = html;
 }
 
-// ---------- 统计卡片更新 ----------
-/**
- * 更新月度考勤统计卡片数值
- * @param {Object} stats - 后端返回的统计数据
- */
-function updateStats(stats) {
-  document.getElementById('statAttendanceDays').textContent = stats.attendance_days || 0;
-  document.getElementById('statLateDays').textContent = stats.late_days || 0;
-  document.getElementById('statMissingDays').textContent = stats.missing_days || 0;
-  document.getElementById('statLeaveDays').textContent = stats.leave_days || 0;
+function updateStats(s) {
+  document.getElementById('statAttendanceDays').textContent = s.attendance_days || 0;
+  document.getElementById('statLateDays').textContent = s.late_days || 0;
+  document.getElementById('statMissingDays').textContent = s.missing_days || 0;
+  document.getElementById('statLeaveDays').textContent = s.leave_days || 0;
 }
 
-// ---------- 月份导航 ----------
-/**
- * 切换到上一月，跨年时年份自动减1
- * @returns {void}
- */
 function prevMonth() {
-  if (currentMonth === 1) {
-    currentMonth = 12;
-    currentYear--;
-  } else {
-    currentMonth--;
-  }
+  if (currentMonth === 1) { currentMonth = 12; currentYear--; }
+  else { currentMonth--; }
   loadCalendar();
 }
 
-/**
- * 切换到下一月，跨年时年份自动加1
- * @returns {void}
- */
 function nextMonth() {
-  if (currentMonth === 12) {
-    currentMonth = 1;
-    currentYear++;
-  } else {
-    currentMonth++;
-  }
+  if (currentMonth === 12) { currentMonth = 1; currentYear++; }
+  else { currentMonth++; }
   loadCalendar();
 }
-
-// ---------- 页面初始化 ----------
-// 检查当前是否在考勤日历面板（面板1），默认不自动加载
-// 考勤日历数据在用户首次切换到该面板时触发加载
 </script>
 
 </body>
