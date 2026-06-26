@@ -144,7 +144,8 @@ function loadEmployeeSelect() {
           html += '<option value="' + emp.id + '">' + emp.name + ' (' + emp.empNo + ')</option>';
         }
         select.innerHTML = html;
-        // 加载完员工列表后，加载当前月份的考勤数据
+        // 加载完员工列表后，初始化工作台员工表格和考勤日历
+        loadEmployeeList();
         loadCalendar();
       }
     })
@@ -166,8 +167,6 @@ function loadEmployeeDetail() {
     document.getElementById('detailContent').innerHTML = '<div class="cal-error">参数错误：缺少员工ID</div>';
     return;
   }
-
-  document.getElementById('detailContent').innerHTML = '<div class="cal-loading">加载员工信息中...</div>';
 
   fetch('/api/employee/detail?empId=' + empId)
     .then(function(r) {
