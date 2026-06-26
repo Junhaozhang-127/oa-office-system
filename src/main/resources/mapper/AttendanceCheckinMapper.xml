@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.buu.oa.mapper.AttendanceCheckinMapper">
+
+    <!--
+        查询员工指定月份的考勤日历数据
+        联查员工表获取姓名，仅返回打卡记录中存在的日期
+    -->
+    <select id="selectMonthCalendar" resultType="com.buu.oa.entity.AttendanceCheckin">
+        SELECT ac.id, ac.emp_id, ac.check_date, ac.check_in_time,
+               ac.check_out_time, ac.status, ac.create_time, ac.update_time
+        FROM attendance_checkin ac
+        WHERE ac.emp_id = #{empId}
+          AND YEAR(ac.check_date) = #{year}
+          AND MONTH(ac.check_date) = #{month}
+        ORDER BY ac.check_date ASC
+    </select>
+
+    <!--
+        按月统计员工考勤概况
+        统计正常/迟到/缺卡/请假各状态的记录条数及出勤天数
+        出勤天数 = 正常 + 迟到（即 status IN (1,2)）
+    -->
+    <select id="selectMonthStats" resultType="java.util.HashMap">
+        SELECT
+            COUNT(*) AS total_records,
+            SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) AS normal_days,
+            SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) AS late_days,
+            SUM(CASE WHEN status = 3 THEN 1 ELSE 0 END) AS missing_days,
+            SUM(CASE WHEN status = 4 THEN 1 ELSE 0 END) AS leave_days,
+            SUM(CASE WHEN status IN (1, 2) THEN 1 ELSE 0 END) AS attendance_days
+        FROM attendance_checkin
+        WHERE emp_id = #{empId}
+          AND YEAR(check_date) = #{year}
+          AND MONTH(check_date) = #{month}
+    </select>
+
+</mapper>

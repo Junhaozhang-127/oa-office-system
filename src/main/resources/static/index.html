@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OA协同办公平台</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"PingFang SC","Microsoft YaHei",sans-serif; background:#f0f2f5; color:#262626; }
+
+  /* 顶部导航栏 */
+  .topbar { background:#001529; height:56px; display:flex; align-items:center; padding:0 24px; gap:16px; color:#fff; }
+  .topbar .logo { font-size:16px; font-weight:600; display:flex; align-items:center; gap:8px; }
+  .topbar .logo-icon { width:28px; height:28px; background:#1890ff; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:14px; }
+  .topbar .crumb { font-size:13px; color:rgba(255,255,255,0.65); margin-left:24px; }
+  .topbar .user { margin-left:auto; display:flex; align-items:center; gap:12px; font-size:13px; color:rgba(255,255,255,0.85); }
+  .user-badge { background:#1890ff; padding:2px 8px; border-radius:4px; font-size:11px; }
+  .user-avatar { width:30px; height:30px; border-radius:50%; background:#52c41a; display:flex; align-items:center; justify-content:center; font-size:12px; }
+
+  /* 布局 */
+  .layout { display:flex; min-height:calc(100vh - 56px); }
+  .sidebar { width:208px; background:#001529; padding:8px 0; }
+  .nav-group { margin-bottom:8px; }
+  .nav-title { padding:8px 24px; font-size:12px; color:rgba(255,255,255,0.45); text-transform:uppercase; letter-spacing:0.5px; }
+  .nav-item { display:flex; align-items:center; gap:10px; padding:10px 24px; font-size:14px; color:rgba(255,255,255,0.65); cursor:pointer; border-left:3px solid transparent; transition:all .2s; }
+  .nav-item:hover { color:#fff; background:#1890ff22; }
+  .nav-item.active { background:#1890ff22; color:#1890ff; border-left-color:#1890ff; }
+  .nav-icon { font-size:16px; width:20px; text-align:center; }
+
+  /* 主内容区 */
+  .main { flex:1; padding:20px 24px; overflow:auto; }
+  .page-title { font-size:18px; font-weight:600; color:#262626; margin-bottom:16px; }
+
+  /* 统计卡片 */
+  .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
+  .stat-card { background:#fff; border-radius:2px; padding:20px; box-shadow:0 1px 2px rgba(0,0,0,0.05); display:flex; align-items:center; gap:16px; }
+  .stat-icon { width:48px; height:48px; border-radius:2px; display:flex; align-items:center; justify-content:center; font-size:22px; }
+  .stat-icon.blue { background:#e6f7ff; color:#1890ff; }
+  .stat-icon.green { background:#f6ffed; color:#52c41a; }
+  .stat-icon.orange { background:#fff7e6; color:#fa8c16; }
+  .stat-icon.red { background:#fff1f0; color:#f5222d; }
+  .stat-num { font-size:24px; font-weight:700; color:#262626; }
+  .stat-lbl { font-size:12px; color:#8c8c8c; margin-top:2px; }
+
+  /* 面板切换 */
+  .panel { display:none; }
+  .panel.active { display:block; }
+
+  /* 卡片 */
+  .card { background:#fff; border-radius:2px; box-shadow:0 1px 2px rgba(0,0,0,0.05); margin-bottom:16px; }
+  .card-hd { padding:14px 20px; border-bottom:1px solid #f0f0f0; display:flex; align-items:center; justify-content:space-between; }
+  .card-hd h3 { font-size:14px; font-weight:600; color:#262626; }
+  .card-bd { padding:16px 20px; }
+
+  /* 表格 */
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { background:#fafafa; padding:10px 16px; text-align:left; font-weight:600; color:#595959; border-bottom:1px solid #f0f0f0; }
+  td { padding:10px 16px; border-bottom:1px solid #f0f0f0; color:#595959; }
+  tr:hover { background:#fafafa; }
+  .txt-right { text-align:right; }
+  .txt-center { text-align:center; }
+
+  /* 标签 */
+  .tag { display:inline-block; padding:2px 8px; border-radius:2px; font-size:12px; font-weight:500; }
+  .t-green { background:#f6ffed; color:#389e0d; border:1px solid #b7eb8f; }
+  .t-red { background:#fff1f0; color:#cf1322; border:1px solid #ffa39e; }
+  .t-blue { background:#e6f7ff; color:#096dd9; border:1px solid #91d5ff; }
+  .t-yellow { background:#fffbe6; color:#d48806; border:1px solid #ffe58f; }
+  .t-gray { background:#f5f5f5; color:#8c8c8c; border:1px solid #d9d9d9; }
+
+  /* 按钮 */
+  .btn { padding:5px 12px; border-radius:2px; border:1px solid #d9d9d9; background:#fff; font-size:12px; color:#595959; cursor:pointer; }
+  .btn:hover { border-color:#1890ff; color:#1890ff; }
+  .btn-primary { background:#1890ff; border-color:#1890ff; color:#fff; }
+  .btn-primary:hover { background:#40a9ff; border-color:#40a9ff; color:#fff; }
+  .btn-sm { padding:3px 8px; font-size:11px; }
+
+  /* ========== 考勤日历组件 ========== */
+  .cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  .cal-month-label { font-size:16px; font-weight:600; color:#262626; }
+  .cal-nav-btn { padding:4px 12px; border:1px solid #d9d9d9; border-radius:2px; background:#fff; cursor:pointer; font-size:13px; color:#595959; }
+  .cal-nav-btn:hover { border-color:#1890ff; color:#1890ff; }
+  .cal-nav-btn:disabled { color:#bfbfbf; cursor:not-allowed; }
+
+  /* 员工选择器 */
+  .cal-emp-select { display:flex; align-items:center; gap:8px; font-size:13px; }
+  .cal-emp-select select { padding:4px 8px; border:1px solid #d9d9d9; border-radius:2px; font-size:13px; color:#262626; background:#fff; }
+
+  /* 星期头 */
+  .cal-weekdays { display:grid; grid-template-columns:repeat(7,1fr); gap:8px; margin-bottom:8px; text-align:center; }
+  .cal-weekday { font-size:12px; font-weight:600; color:#8c8c8c; padding:6px 0; }
+  .cal-weekday.weekend { color:#f5222d; }
+
+  /* 日历网格 */
+  .cal-wrap { display:grid; grid-template-columns:repeat(7,1fr); gap:8px; }
+  .cal-day { background:#fafafa; border-radius:2px; padding:8px; text-align:center; font-size:12px; min-height:64px; border:1px solid #f0f0f0; display:flex; flex-direction:column; align-items:center; justify-content:center; transition:all .2s; }
+  .cal-day:hover { border-color:#1890ff; box-shadow:0 0 4px rgba(24,144,255,0.2); }
+  .cal-day.placeholder { background:transparent; border-color:transparent; }
+  .cal-day.placeholder:hover { border-color:transparent; box-shadow:none; }
+  .cal-day .d-num { font-weight:600; color:#262626; margin-bottom:4px; font-size:14px; }
+  .cal-day .d-status { font-size:11px; padding:1px 6px; border-radius:2px; display:inline-block; }
+  .d-normal { background:#f6ffed; color:#389e0d; }
+  .d-late { background:#fffbe6; color:#d48806; }
+  .d-absent { background:#fff1f0; color:#cf1322; }
+  .d-leave { background:#e6f7ff; color:#096dd9; }
+  .d-weekend { background:#f5f5f5; color:#bfbfbf; }
+  .d-norecord { background:#fafafa; color:#bfbfbf; border:1px dashed #e8e8e8; }
+
+  /* 图例 */
+  .cal-legend { display:flex; gap:16px; font-size:12px; flex-wrap:wrap; }
+  .cal-legend-item { display:flex; align-items:center; gap:4px; }
+  .cal-legend-dot { display:inline-block; width:10px; height:10px; border-radius:2px; }
+
+  /* 审批流 */
+  .flow-line { display:flex; align-items:center; gap:10px; margin:16px 0; flex-wrap:wrap; }
+  .flow-node { background:#e6f7ff; color:#096dd9; padding:8px 14px; border-radius:2px; font-size:12px; font-weight:500; border:1px solid #91d5ff; }
+  .flow-node.done { background:#f6ffed; color:#389e0d; border-color:#b7eb8f; }
+  .flow-node.cur { background:#fffbe6; color:#d48806; border-color:#ffe58f; font-weight:700; }
+  .flow-arrow { color:#bfbfbf; font-size:14px; }
+
+  /* 时间轴 */
+  .tl-wrap { position:relative; padding-left:24px; }
+  .tl-wrap::before { content:""; position:absolute; left:6px; top:0; bottom:0; width:1px; background:#f0f0f0; }
+  .tl-item { position:relative; margin-bottom:16px; }
+  .tl-item::before { content:""; position:absolute; left:-22px; top:4px; width:8px; height:8px; border-radius:50%; background:#bfbfbf; border:2px solid #fff; }
+  .tl-item.done::before { background:#52c41a; }
+  .tl-time { font-size:11px; color:#8c8c8c; margin-bottom:2px; }
+  .tl-text { font-size:13px; color:#262626; }
+
+  /* 图表区 */
+  .chart-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+  .chart-card { background:#fff; border-radius:2px; box-shadow:0 1px 2px rgba(0,0,0,0.05); padding:16px 20px; }
+  .chart-hd { font-size:14px; font-weight:600; color:#262626; margin-bottom:12px; }
+  .bar-wrap { display:flex; align-items:flex-end; gap:10px; height:160px; padding:0 8px; }
+  .bar { flex:1; background:#1890ff; border-radius:2px 2px 0 0; position:relative; opacity:0.85; min-width:30px; }
+  .bar:hover { opacity:1; }
+  .bar-lbl { position:absolute; bottom:-18px; left:50%; transform:translateX(-50%); font-size:10px; color:#8c8c8c; white-space:nowrap; }
+  .pie-wrap { width:130px; height:130px; border-radius:50%; margin:0 auto; position:relative; }
+  .pie-c { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:13px; font-weight:700; color:#262626; }
+  .leg { display:flex; justify-content:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
+  .leg-i { display:flex; align-items:center; gap:3px; font-size:11px; color:#595959; }
+  .leg-dot { width:7px; height:7px; border-radius:50%; }
+
+  /* AI 摘要卡片 */
+  .ai-log { background:#f6ffed; border-left:3px solid #52c41a; padding:10px 14px; border-radius:0 2px 2px 0; margin:8px 0; font-size:12px; color:#262626; }
+  .ai-log .ai-hd { color:#389e0d; font-weight:600; margin-bottom:3px; font-size:11px; }
+
+  /* 通知 */
+  .notice-item { display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid #f0f0f0; }
+  .notice-item:last-child { border-bottom:none; }
+  .notice-title { font-weight:600; color:#262626; font-size:13px; display:flex; align-items:center; gap:6px; }
+  .notice-dot { width:6px; height:6px; border-radius:50%; background:#f5222d; }
+  .notice-meta { font-size:12px; color:#8c8c8c; margin-top:2px; }
+  .notice-time { font-size:12px; color:#bfbfbf; }
+
+  /* 加载提示 */
+  .cal-loading { text-align:center; padding:40px; color:#8c8c8c; font-size:13px; }
+  .cal-error { text-align:center; padding:40px; color:#f5222d; font-size:13px; }
+</style>
+</head>
+<body>
+
+<!-- ========== 顶部导航栏 ========== -->
+<div class="topbar">
+  <div class="logo"><div class="logo-icon">OA</div>OA协同办公平台</div>
+  <div class="crumb">首页 / <span id="crumbText">工作台</span></div>
+  <div class="user"><span class="user-badge">管理员</span><span>admin</span><div class="user-avatar">管</div></div>
+</div>
+
+<!-- ========== 主布局 ========== -->
+<div class="layout">
+  <nav class="sidebar">
+    <div class="nav-group">
+      <div class="nav-title">工作台</div>
+      <div class="nav-item active" onclick="switchTab(0,this)">
+        <span class="nav-icon">&#x1F4CB;</span>工作台
+      </div>
+      <div class="nav-item" onclick="switchTab(1,this)">
+        <span class="nav-icon">&#x1F4C5;</span>考勤日历
+      </div>
+      <div class="nav-item" onclick="switchTab(2,this)">
+        <span class="nav-icon">&#x1F4CA;</span>数据看板
+      </div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-title">业务流程</div>
+      <div class="nav-item" onclick="switchTab(3,this)">
+        <span class="nav-icon">&#x1F4DD;</span>审批流
+      </div>
+      <div class="nav-item" onclick="switchTab(4,this)">
+        <span class="nav-icon">&#x1F514;</span>通知中心
+      </div>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- ==================== 面板0：工作台 ==================== -->
+    <div class="panel active" id="panel0">
+      <div class="page-title">&#x1F4CB; 我的工作台</div>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon blue">&#x1F465;</div>
+          <div><div class="stat-num">156</div><div class="stat-lbl">员工总数</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green">&#x2705;</div>
+          <div><div class="stat-num">142</div><div class="stat-lbl">本月出勤</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon orange">&#x23F3;</div>
+          <div><div class="stat-num">8</div><div class="stat-lbl">待审批</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon red">&#x26A0;&#xFE0F;</div>
+          <div><div class="stat-num">3</div><div class="stat-lbl">异常考勤</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd"><h3>我的待办</h3></div>
+        <div class="card-bd" style="padding:0;">
+          <table>
+            <tr><th>类型</th><th>标题</th><th>申请人</th><th>时间</th><th>状态</th><th class="txt-center">操作</th></tr>
+            <tr>
+              <td><span class="tag t-yellow">报销审批</span></td>
+              <td>差旅费报销-北京出差</td><td>张三</td><td>2026-05-19 09:30</td>
+              <td><span class="tag t-yellow">待审批</span></td>
+              <td class="txt-center"><button class="btn btn-primary btn-sm">审批</button></td>
+            </tr>
+            <tr>
+              <td><span class="tag t-blue">请假审批</span></td>
+              <td>病假申请-5月20日</td><td>李四</td><td>2026-05-19 08:15</td>
+              <td><span class="tag t-yellow">待审批</span></td>
+              <td class="txt-center"><button class="btn btn-primary btn-sm">审批</button></td>
+            </tr>
+            <tr>
+              <td><span class="tag t-green">会议通知</span></td>
+              <td>产品评审会-5月20日14:00</td><td>王五</td><td>2026-05-19 10:00</td>
+              <td><span class="tag t-blue">待参加</span></td>
+              <td class="txt-center"><button class="btn btn-sm">详情</button></td>
+            </tr>
+            <tr>
+              <td><span class="tag t-gray">公告</span></td>
+              <td>端午节放假通知</td><td>行政部</td><td>2026-05-18 17:00</td>
+              <td><span class="tag t-green">已读</span></td>
+              <td class="txt-center"><button class="btn btn-sm">查看</button></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd"><h3>员工档案</h3></div>
+        <div class="card-bd" style="padding:0;">
+          <table>
+            <tr><th>工号</th><th>姓名</th><th>部门</th><th>职位</th><th>入职日期</th><th>状态</th><th class="txt-center">操作</th></tr>
+            <tr><td>E2024001</td><td>张三</td><td>研发部</td><td>Java工程师</td><td>2024-03-01</td><td><span class="tag t-green">在职</span></td><td class="txt-center"><button class="btn btn-sm">详情</button></td></tr>
+            <tr><td>E2024002</td><td>李四</td><td>市场部</td><td>销售经理</td><td>2023-06-15</td><td><span class="tag t-green">在职</span></td><td class="txt-center"><button class="btn btn-sm">详情</button></td></tr>
+            <tr><td>E2024003</td><td>王五</td><td>产品部</td><td>产品经理</td><td>2024-01-10</td><td><span class="tag t-green">在职</span></td><td class="txt-center"><button class="btn btn-sm">详情</button></td></tr>
+            <tr><td>E2024004</td><td>赵六</td><td>财务部</td><td>财务主管</td><td>2022-09-01</td><td><span class="tag t-green">在职</span></td><td class="txt-center"><button class="btn btn-sm">详情</button></td></tr>
+            <tr><td>E2024005</td><td>孙七</td><td>人事部</td><td>HRBP</td><td>2023-12-01</td><td><span class="tag t-yellow">试用期</span></td><td class="txt-center"><button class="btn btn-sm">详情</button></td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 面板1：考勤日历 ==================== -->
+    <div class="panel" id="panel1">
+      <div class="page-title">&#x1F4C5; 考勤日历</div>
+
+      <!-- 日历主体卡片 -->
+      <div class="card">
+        <div class="card-hd">
+          <h3>打卡状态标记</h3>
+          <div class="cal-legend">
+            <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#f6ffed;border:1px solid #b7eb8f;"></span>正常</div>
+            <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#fffbe6;border:1px solid #ffe58f;"></span>迟到</div>
+            <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#fff1f0;border:1px solid #ffa39e;"></span>缺卡</div>
+            <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#e6f7ff;border:1px solid #91d5ff;"></span>请假</div>
+            <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#f5f5f5;border:1px solid #e8e8e8;"></span>周末</div>
+          </div>
+        </div>
+        <div class="card-bd">
+          <!-- 月份导航 + 员工选择 -->
+          <div class="cal-header">
+            <button class="cal-nav-btn" onclick="prevMonth()" title="上一月">&lt; 上一月</button>
+            <span class="cal-month-label" id="calMonthLabel">2026年5月</span>
+            <button class="cal-nav-btn" onclick="nextMonth()" title="下一月">下一月 &gt;</button>
+            <div class="cal-emp-select">
+              <label for="empSelect">查看员工：</label>
+              <select id="empSelect" onchange="loadCalendar()">
+                <option value="1">张三 (E2024001)</option>
+                <option value="2">李四 (E2024002)</option>
+                <option value="3">王五 (E2024003)</option>
+                <option value="4">赵六 (E2024004)</option>
+                <option value="5">孙七 (E2024005)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 星期表头 -->
+          <div class="cal-weekdays">
+            <div class="cal-weekday">一</div>
+            <div class="cal-weekday">二</div>
+            <div class="cal-weekday">三</div>
+            <div class="cal-weekday">四</div>
+            <div class="cal-weekday">五</div>
+            <div class="cal-weekday weekend">六</div>
+            <div class="cal-weekday weekend">日</div>
+          </div>
+
+          <!-- 日历网格 -->
+          <div class="cal-wrap" id="calGrid">
+            <div class="cal-loading">加载中...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 月度考勤统计卡片 -->
+      <div class="card">
+        <div class="card-hd"><h3>本月考勤统计</h3></div>
+        <div class="card-bd">
+          <div class="stats-row">
+            <div class="stat-card">
+              <div class="stat-icon green">&#x1F4C5;</div>
+              <div><div class="stat-num" id="statAttendanceDays">0</div><div class="stat-lbl">出勤天数</div></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon orange">&#x23F0;</div>
+              <div><div class="stat-num" id="statLateDays">0</div><div class="stat-lbl">迟到次数</div></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon red">&#x274C;</div>
+              <div><div class="stat-num" id="statMissingDays">0</div><div class="stat-lbl">缺卡次数</div></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon blue">&#x1F4DD;</div>
+              <div><div class="stat-num" id="statLeaveDays">0</div><div class="stat-lbl">请假天数</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 面板2：数据看板 ==================== -->
+    <div class="panel" id="panel2">
+      <div class="page-title">&#x1F4CA; 经营分析驾驶舱</div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-icon blue">&#x1F465;</div><div><div class="stat-num">156</div><div class="stat-lbl">员工总数</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">&#x2705;</div><div><div class="stat-num">142</div><div class="stat-lbl">本月出勤</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">&#x23F3;</div><div><div class="stat-num">8</div><div class="stat-lbl">待审批</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">&#x26A0;&#xFE0F;</div><div><div class="stat-num">3</div><div class="stat-lbl">异常考勤</div></div></div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card">
+          <div class="chart-hd">各部门人数分布</div>
+          <div class="bar-wrap">
+            <div class="bar" style="height:70%;"><div class="bar-lbl">研发部</div></div>
+            <div class="bar" style="height:50%;"><div class="bar-lbl">市场部</div></div>
+            <div class="bar" style="height:40%;"><div class="bar-lbl">产品部</div></div>
+            <div class="bar" style="height:30%;"><div class="bar-lbl">财务部</div></div>
+            <div class="bar" style="height:20%;"><div class="bar-lbl">人事部</div></div>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-hd">请假类型分布</div>
+          <div style="display:flex; align-items:center; justify-content:center; height:180px;">
+            <div class="pie-wrap" style="background:conic-gradient(#1890ff 0% 35%, #52c41a 35% 60%, #fa8c16 60% 80%, #f5222d 80% 100%);">
+              <div class="pie-c">45次</div>
+            </div>
+          </div>
+          <div class="leg">
+            <div class="leg-i"><div class="leg-dot" style="background:#1890ff;"></div>病假 35%</div>
+            <div class="leg-i"><div class="leg-dot" style="background:#52c41a;"></div>事假 25%</div>
+            <div class="leg-i"><div class="leg-dot" style="background:#fa8c16;"></div>年假 20%</div>
+            <div class="leg-i"><div class="leg-dot" style="background:#f5222d;"></div>调休 20%</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><h3>近6个月报销金额趋势（元）</h3></div>
+        <div class="card-bd">
+          <div class="bar-wrap" style="height:180px;">
+            <div class="bar" style="height:40%;"><div class="bar-lbl">12月</div></div>
+            <div class="bar" style="height:55%;"><div class="bar-lbl">1月</div></div>
+            <div class="bar" style="height:45%;"><div class="bar-lbl">2月</div></div>
+            <div class="bar" style="height:60%;"><div class="bar-lbl">3月</div></div>
+            <div class="bar" style="height:75%;"><div class="bar-lbl">4月</div></div>
+            <div class="bar" style="height:65%;"><div class="bar-lbl">5月</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><h3>本月报销金额Top5</h3></div>
+        <div class="card-bd" style="padding:0;">
+          <table>
+            <tr><th class="txt-center">排名</th><th>姓名</th><th>部门</th><th class="txt-center">报销次数</th><th class="txt-right">报销金额</th><th>状态</th></tr>
+            <tr><td class="txt-center">1</td><td>张三</td><td>研发部</td><td class="txt-center">5</td><td class="txt-right">¥8,560</td><td><span class="tag t-green">已审批</span></td></tr>
+            <tr><td class="txt-center">2</td><td>李四</td><td>市场部</td><td class="txt-center">4</td><td class="txt-right">¥6,230</td><td><span class="tag t-green">已审批</span></td></tr>
+            <tr><td class="txt-center">3</td><td>王五</td><td>产品部</td><td class="txt-center">3</td><td class="txt-right">¥4,890</td><td><span class="tag t-yellow">待审批</span></td></tr>
+            <tr><td class="txt-center">4</td><td>赵六</td><td>财务部</td><td class="txt-center">2</td><td class="txt-right">¥3,450</td><td><span class="tag t-green">已审批</span></td></tr>
+            <tr><td class="txt-center">5</td><td>孙七</td><td>人事部</td><td class="txt-center">2</td><td class="txt-right">¥2,180</td><td><span class="tag t-yellow">待审批</span></td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 面板3：审批流 ==================== -->
+    <div class="panel" id="panel3">
+      <div class="page-title">&#x1F4DD; 费用报销审批流</div>
+      <div class="card">
+        <div class="card-hd"><h3>审批状态：BX20250519001（已通过）</h3></div>
+        <div class="card-bd">
+          <div class="flow-line">
+            <div class="flow-node">提交申请<br><span style="font-size:10px;">PENDING</span></div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node done">直属经理审批<br><span style="font-size:10px;">MANAGER_APPROVED</span></div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node done">财务审批<br><span style="font-size:10px;">FINANCE_APPROVED</span></div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node cur">出纳打款<br><span style="font-size:10px;">COMPLETED</span></div>
+            <div style="margin-left:auto; font-size:12px; color:#52c41a; font-weight:600;">&#x2705; 已通过</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><h3>待审批报销单（经理视角）</h3></div>
+        <div class="card-bd" style="padding:0;">
+          <table>
+            <tr><th>单号</th><th>申请人</th><th>部门</th><th class="txt-right">金额</th><th>类型</th><th>状态</th><th class="txt-center">操作</th></tr>
+            <tr>
+              <td>BX20250519001</td><td>张三</td><td>研发部</td><td class="txt-right">¥2,350</td><td>差旅费</td>
+              <td><span class="tag t-yellow">待经理审批</span></td>
+              <td class="txt-center"><button class="btn btn-primary btn-sm">通过</button> <button class="btn btn-sm" style="border-color:#f5222d; color:#f5222d;">驳回</button></td>
+            </tr>
+            <tr>
+              <td>BX20250518002</td><td>李四</td><td>市场部</td><td class="txt-right">¥1,680</td><td>招待费</td>
+              <td><span class="tag t-yellow">待经理审批</span></td>
+              <td class="txt-center"><button class="btn btn-primary btn-sm">通过</button> <button class="btn btn-sm" style="border-color:#f5222d; color:#f5222d;">驳回</button></td>
+            </tr>
+            <tr>
+              <td>BX20250517003</td><td>王五</td><td>产品部</td><td class="txt-right">¥890</td><td>办公用品</td>
+              <td><span class="tag t-blue">待财务审批</span></td>
+              <td class="txt-center"><button class="btn btn-sm">查看</button></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><h3>审批历史记录（BX20250519001）</h3></div>
+        <div class="card-bd">
+          <div class="tl-wrap">
+            <div class="tl-item done"><div class="tl-time">2026-05-19 09:30</div><div class="tl-text">张三 提交报销申请，金额 ¥2,350（差旅费-北京出差），状态：PENDING</div></div>
+            <div class="tl-item done"><div class="tl-time">2026-05-19 10:15</div><div class="tl-text">直属经理 赵六 审批通过："同意报销，请走财务流程"</div></div>
+            <div class="tl-item done"><div class="tl-time">2026-05-19 11:00</div><div class="tl-text">财务 孙七 审批通过："发票合规，金额无误，同意付款"</div></div>
+            <div class="tl-item done"><div class="tl-time">2026-05-19 14:30</div><div class="tl-text">出纳 周八 完成打款：¥2,350 已转账至工资卡，状态更新为 COMPLETED</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><h3>AI智能审批摘要</h3></div>
+        <div class="card-bd">
+          <div class="ai-log">
+            <div class="ai-hd">&#x1F916; DeepSeek生成审批意见摘要</div>
+            原始意见："经核实，该员工于5月15日-17日赴北京参加技术峰会，往返机票及酒店费用共计2350元，发票齐全且符合公司差旅标准，同意按标准报销。"<br><br>
+            AI摘要：<b>"北京出差3天，发票合规，金额2350元，符合标准，建议通过。"</b>（20字）
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 面板4：通知中心 ==================== -->
+    <div class="panel" id="panel4">
+      <div class="page-title">&#x1F514; 消息通知中心</div>
+      <div class="card">
+        <div class="card-hd"><h3>未读消息</h3><span style="font-size:12px; color:#f5222d; font-weight:600;">2条未读</span></div>
+        <div class="card-bd">
+          <div class="notice-item">
+            <div>
+              <div class="notice-title"><div class="notice-dot"></div>报销审批通过</div>
+              <div class="notice-meta">您的差旅费报销单 BX20250519001 已通过财务审批，预计3个工作日内到账</div>
+            </div>
+            <div class="notice-time">10分钟前</div>
+          </div>
+          <div class="notice-item">
+            <div>
+              <div class="notice-title"><div class="notice-dot"></div>会议提醒</div>
+              <div class="notice-meta">产品评审会将于5月20日14:00在3号会议室举行，请准时参加</div>
+            </div>
+            <div class="notice-time">1小时前</div>
+          </div>
+          <div class="notice-item">
+            <div>
+              <div class="notice-title">考勤异常提醒</div>
+              <div class="notice-meta">您5月13日下班未打卡，已标记为缺卡，请及时补卡或联系HR</div>
+            </div>
+            <div class="notice-time">昨天</div>
+          </div>
+          <div class="notice-item">
+            <div>
+              <div class="notice-title">公告：端午节放假通知</div>
+              <div class="notice-meta">2026年端午节放假时间为6月22日-24日，共3天。请提前安排好工作。</div>
+            </div>
+            <div class="notice-time">昨天</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+/* ================================================================
+ * OA协同办公平台 - 前端交互脚本
+ * 负责面板切换、考勤日历API调用、日历渲染与统计展示
+ * ================================================================ */
+
+// ---------- 全局状态 ----------
+var currentYear  = new Date().getFullYear();
+var currentMonth = new Date().getMonth() + 1; // JavaScript月份0-based
+
+// ---------- 面板切换 ----------
+/**
+ * 切换主内容区面板
+ * @param {number} n - 面板索引 0~4
+ * @param {Element} el - 触发点击的导航项DOM元素
+ */
+function switchTab(n, el) {
+  document.querySelectorAll('.panel').forEach(function(p, i) {
+    p.classList.toggle('active', i === n);
+  });
+  document.querySelectorAll('.nav-item').forEach(function(i) {
+    i.classList.remove('active');
+  });
+  if (el) el.classList.add('active');
+  var titles = ['工作台', '考勤日历', '数据看板', '审批流', '通知中心'];
+  document.getElementById('crumbText').textContent = titles[n];
+
+  // 切换到考勤日历时自动加载数据
+  if (n === 1) {
+    loadCalendar();
+  }
+}
+
+// ---------- 考勤日历 API 调用 ----------
+/**
+ * 从后端API加载考勤日历数据并渲染
+ * 调用 /api/attendance/calendar 接口获取指定员工指定月份的打卡记录
+ */
+function loadCalendar() {
+  var empId = document.getElementById('empSelect').value;
+  var url = '/api/attendance/calendar?empId=' + empId
+            + '&year=' + currentYear + '&month=' + currentMonth;
+
+  // 更新月份标签
+  document.getElementById('calMonthLabel').textContent = currentYear + '年' + currentMonth + '月';
+
+  // 显示加载状态
+  document.getElementById('calGrid').innerHTML = '<div class="cal-loading">加载中...</div>';
+
+  fetch(url)
+    .then(function(response) {
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status);
+      }
+      return response.json();
+    })
+    .then(function(result) {
+      if (result.code === 200) {
+        renderCalendar(result.data);
+        updateStats(result.data.stats);
+      } else {
+        document.getElementById('calGrid').innerHTML =
+          '<div class="cal-error">数据加载失败：' + result.msg + '</div>';
+      }
+    })
+    .catch(function(err) {
+      document.getElementById('calGrid').innerHTML =
+        '<div class="cal-error">网络请求失败，请确认后端服务已启动。<br>错误信息：' + err.message + '</div>';
+    });
+}
+
+// ---------- 日历网格渲染 ----------
+/**
+ * 根据API返回数据渲染日历网格
+ * 状态映射：1-正常 2-迟到 3-缺卡 4-请假 0-周末 5-无记录
+ * @param {Object} data - 后端返回的日历数据
+ */
+function renderCalendar(data) {
+  var days = data.calendarDays;
+  var html = '';
+
+  for (var i = 0; i < days.length; i++) {
+    var day = days[i];
+
+    // 空白占位格（月初补齐星期）
+    if (day === null) {
+      html += '<div class="cal-day placeholder"></div>';
+      continue;
+    }
+
+    var status = day.status;
+    var statusClass = '';
+    var statusText = day.statusText || '';
+
+    // 根据状态码确定CSS类名
+    switch (status) {
+      case 1: statusClass = 'd-normal'; break;    // 正常
+      case 2: statusClass = 'd-late'; break;      // 迟到
+      case 3: statusClass = 'd-absent'; break;    // 缺卡
+      case 4: statusClass = 'd-leave'; break;     // 请假
+      case 0: statusClass = 'd-weekend'; break;   // 周末
+      default: statusClass = 'd-norecord'; break; // 无记录
+    }
+
+    html += '<div class="cal-day">'
+          +   '<div class="d-num">' + day.day + '</div>'
+          +   '<div class="d-status ' + statusClass + '">' + statusText + '</div>'
+          + '</div>';
+  }
+
+  document.getElementById('calGrid').innerHTML = html;
+}
+
+// ---------- 统计卡片更新 ----------
+/**
+ * 更新月度考勤统计卡片数值
+ * @param {Object} stats - 后端返回的统计数据
+ */
+function updateStats(stats) {
+  document.getElementById('statAttendanceDays').textContent = stats.attendance_days || 0;
+  document.getElementById('statLateDays').textContent = stats.late_days || 0;
+  document.getElementById('statMissingDays').textContent = stats.missing_days || 0;
+  document.getElementById('statLeaveDays').textContent = stats.leave_days || 0;
+}
+
+// ---------- 月份导航 ----------
+/** 切换到上一月 */
+function prevMonth() {
+  if (currentMonth === 1) {
+    currentMonth = 12;
+    currentYear--;
+  } else {
+    currentMonth--;
+  }
+  loadCalendar();
+}
+
+/** 切换到下一月 */
+function nextMonth() {
+  if (currentMonth === 12) {
+    currentMonth = 1;
+    currentYear++;
+  } else {
+    currentMonth++;
+  }
+  loadCalendar();
+}
+
+// ---------- 页面初始化 ----------
+// 检查当前是否在考勤日历面板（面板1），默认不自动加载
+// 考勤日历数据在用户首次切换到该面板时触发加载
+</script>
+
+</body>
+</html>
