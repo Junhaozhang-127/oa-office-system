@@ -12,17 +12,16 @@ function switchTab(n, el) {
   var titles = ['工作台', '考勤日历', '数据看板', '审批流', '通知中心'];
   document.getElementById('crumbText').textContent = titles[n];
   if (n === 0) loadEmployeeList();
-  if (n === 1) loadCalendar();
+  if (n === 1) { loadCalendar(); loadCalendarStats(); }
 }
 
-/* ---------- 考勤日历 ---------- */
+/* ---------- 考勤日历模块（日历网格与月度统计独立） ---------- */
 function loadCalendar() {
   var empId = document.getElementById('empSelect').value;
-  var url = '/api/attendance/calendar?empId=' + empId + '&year=' + currentYear + '&month=' + currentMonth;
   document.getElementById('calMonthLabel').textContent = currentYear + '年' + currentMonth + '月';
   document.getElementById('calGrid').innerHTML = '<div class="cal-loading">加载中...</div>';
 
-  fetch(url)
+  fetch('/api/attendance/calendar?empId=' + empId + '&year=' + currentYear + '&month=' + currentMonth)
     .then(function(r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
@@ -30,13 +29,30 @@ function loadCalendar() {
     .then(function(res) {
       if (res.code === 200) {
         renderCalendar(res.data);
-        updateStats(res.data.stats);
       } else {
         document.getElementById('calGrid').innerHTML = '<div class="cal-error">数据加载失败：' + res.msg + '</div>';
       }
     })
     .catch(function(e) {
       document.getElementById('calGrid').innerHTML = '<div class="cal-error">网络请求失败，请确认后端服务已启动。<br>错误信息：' + e.message + '</div>';
+    });
+}
+
+function loadCalendarStats() {
+  var empId = document.getElementById('empSelect').value;
+
+  fetch('/api/attendance/stats?empId=' + empId + '&year=' + currentYear + '&month=' + currentMonth)
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(res) {
+      if (res.code === 200) {
+        updateStats(res.data);
+      }
+    })
+    .catch(function() {
+      // 统计加载失败不影响日历展示，保持原数值
     });
 }
 
@@ -70,12 +86,14 @@ function prevMonth() {
   if (currentMonth === 1) { currentMonth = 12; currentYear--; }
   else { currentMonth--; }
   loadCalendar();
+  loadCalendarStats();
 }
 
 function nextMonth() {
   if (currentMonth === 12) { currentMonth = 1; currentYear++; }
   else { currentMonth++; }
   loadCalendar();
+  loadCalendarStats();
 }
 
 /* ---------- 员工列表数据加载 ---------- */
@@ -147,6 +165,7 @@ function loadEmployeeSelect() {
         // 加载完员工列表后，初始化工作台员工表格和考勤日历
         loadEmployeeList();
         loadCalendar();
+        loadCalendarStats();
       }
     })
     .catch(function() {

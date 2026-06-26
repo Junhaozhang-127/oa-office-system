@@ -8,7 +8,7 @@ import java.util.Map;
 
 /**
  * 考勤日历Controller
- * 处理考勤日历相关前端请求，包含日历数据查询和统计接口
+ * 日历网格与月度统计为两个独立接口，前端分开请求、互不影响
  */
 @RestController
 @RequestMapping("/api/attendance")
@@ -21,26 +21,32 @@ public class AttendanceController {
     }
 
     /**
-     * 获取员工考勤日历数据
-     * 包含当月每日打卡状态和月度统计信息
-     * @param empId 员工ID（必填）
-     * @param year  年份（选填，默认当前年）
-     * @param month 月份（选填，默认当前月）
-     * @return 日历数据与月度统计
+     * 获取考勤日历网格（仅日历，不含统计）
      */
     @GetMapping("/calendar")
     public R<Map<String, Object>> getCalendar(@RequestParam Long empId,
                                                @RequestParam(required = false) Integer year,
                                                @RequestParam(required = false) Integer month) {
         java.time.YearMonth now = java.time.YearMonth.now();
-        if (year == null) {
-            year = now.getYear();
-        }
-        if (month == null) {
-            month = now.getMonthValue();
-        }
+        if (year == null) year = now.getYear();
+        if (month == null) month = now.getMonthValue();
 
-        Map<String, Object> data = attendanceService.getMonthCalendar(empId, year, month);
+        Map<String, Object> data = attendanceService.getCalendarGrid(empId, year, month);
+        return R.success(data);
+    }
+
+    /**
+     * 获取月考勤统计（仅统计，独立于日历）
+     */
+    @GetMapping("/stats")
+    public R<Map<String, Object>> getStats(@RequestParam Long empId,
+                                            @RequestParam(required = false) Integer year,
+                                            @RequestParam(required = false) Integer month) {
+        java.time.YearMonth now = java.time.YearMonth.now();
+        if (year == null) year = now.getYear();
+        if (month == null) month = now.getMonthValue();
+
+        Map<String, Object> data = attendanceService.getMonthStats(empId, year, month);
         return R.success(data);
     }
 }
