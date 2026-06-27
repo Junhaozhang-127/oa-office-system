@@ -12,8 +12,8 @@
                ac.check_out_time, ac.status, ac.create_time, ac.update_time
         FROM attendance_checkin ac
         WHERE ac.emp_id = #{empId}
-          AND YEAR(ac.check_date) = #{year}
-          AND MONTH(ac.check_date) = #{month}
+          AND ac.check_date &gt;= #{startDate}
+          AND ac.check_date &lt; #{endDate}
         ORDER BY ac.check_date ASC
     </select>
 
@@ -32,8 +32,8 @@
             SUM(CASE WHEN status IN (1, 2) THEN 1 ELSE 0 END) AS attendance_days
         FROM attendance_checkin
         WHERE emp_id = #{empId}
-          AND YEAR(check_date) = #{year}
-          AND MONTH(check_date) = #{month}
+          AND check_date &gt;= #{startDate}
+          AND check_date &lt; #{endDate}
     </select>
 
     <!--

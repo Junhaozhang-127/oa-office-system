@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.buu.oa.mapper.OvertimeApplicationMapper">
+
+    <!-- selectByEmpId: 按员工ID查询加班申请，按创建时间倒序 -->
+    <select id="selectByEmpId" resultType="java.util.HashMap">
+        SELECT oa.id,
+               oa.overtime_no   AS overtimeNo,
+               oa.emp_id        AS empId,
+               e.name           AS empName,
+               oa.overtime_type AS overtimeType,
+               oa.start_time    AS startTime,
+               oa.end_time      AS endTime,
+               oa.hours         AS hours,
+               oa.reason        AS reason,
+               oa.status        AS status,
+               oa.create_time   AS createTime
+        FROM overtime_application oa
+                 LEFT JOIN emp_employee e ON oa.emp_id = e.id
+        WHERE oa.emp_id = #{empId}
+        ORDER BY oa.create_time DESC
+    </select>
+
+</mapper>
