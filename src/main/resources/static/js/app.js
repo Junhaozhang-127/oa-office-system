@@ -18,6 +18,7 @@ function switchTab(n, el) {
 /* ---------- 考勤日历模块（日历网格与月度统计独立） ---------- */
 function loadCalendar() {
   var empId = document.getElementById('empSelect').value;
+  if (!empId) { document.getElementById('calGrid').innerHTML = '<div class="cal-loading">正在加载员工数据...</div>'; return; }
   document.getElementById('calMonthLabel').textContent = currentYear + '年' + currentMonth + '月';
   document.getElementById('calGrid').innerHTML = '<div class="cal-loading">加载中...</div>';
 
@@ -40,6 +41,7 @@ function loadCalendar() {
 
 function loadCalendarStats() {
   var empId = document.getElementById('empSelect').value;
+  if (!empId) return;
 
   fetch('/api/attendance/stats?empId=' + empId + '&year=' + currentYear + '&month=' + currentMonth)
     .then(function(r) {

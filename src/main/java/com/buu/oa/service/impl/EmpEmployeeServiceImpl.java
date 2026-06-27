@@ -6,6 +6,7 @@ import com.buu.oa.mapper.EmpEmployeeMapper;
 import com.buu.oa.service.EmpEmployeeService;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.*;
 
@@ -44,8 +45,10 @@ public class EmpEmployeeServiceImpl implements EmpEmployeeService {
 
         // 获取当月考勤统计
         YearMonth now = YearMonth.now();
+        LocalDate startDate = now.atDay(1);
+        LocalDate endDate = now.plusMonths(1).atDay(1);
         Map<String, Object> attendanceStats = attendanceCheckinMapper
-                .selectMonthStats(empId, now.getYear(), now.getMonthValue());
+                .selectMonthStats(empId, startDate, endDate);
         if (attendanceStats == null) {
             attendanceStats = new HashMap<>();
             attendanceStats.put("total_records", 0L);
