@@ -24,14 +24,16 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     public Map<String, Object> getCalendarGrid(Long empId, Integer year, Integer month) {
-        List<AttendanceCheckin> records = attendanceCheckinMapper.selectMonthCalendar(empId, year, month);
+        YearMonth yearMonth = YearMonth.of(year, month);
+        LocalDate startDate = yearMonth.atDay(1);
+        LocalDate endDate = yearMonth.plusMonths(1).atDay(1);
+        List<AttendanceCheckin> records = attendanceCheckinMapper.selectMonthCalendar(empId, startDate, endDate);
 
         Map<LocalDate, AttendanceCheckin> recordMap = new LinkedHashMap<>();
         for (AttendanceCheckin r : records) {
             recordMap.put(r.getCheckDate(), r);
         }
 
-        YearMonth yearMonth = YearMonth.of(year, month);
         int daysInMonth = yearMonth.lengthOfMonth();
         int firstDayOfWeek = yearMonth.atDay(1).getDayOfWeek().getValue();
 
@@ -77,7 +79,10 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     public Map<String, Object> getMonthStats(Long empId, Integer year, Integer month) {
-        Map<String, Object> stats = attendanceCheckinMapper.selectMonthStats(empId, year, month);
+        YearMonth yearMonth = YearMonth.of(year, month);
+        LocalDate startDate = yearMonth.atDay(1);
+        LocalDate endDate = yearMonth.plusMonths(1).atDay(1);
+        Map<String, Object> stats = attendanceCheckinMapper.selectMonthStats(empId, startDate, endDate);
         if (stats == null) {
             stats = new HashMap<>();
             stats.put("total_records", 0L);
