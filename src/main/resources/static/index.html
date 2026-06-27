@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OA协同办公平台</title>
 <link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 </head>
 <body onload="loadEmployeeSelect()">
 
@@ -210,65 +211,46 @@
     <div class="panel" id="panel2">
       <div class="page-header">
         <div class="page-title"><span class="icon">📊</span>经营分析驾驶舱</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="date" id="dashStartDate" class="form-input" style="max-width:140px;font-size:12px;" title="开始日期">
+          <span style="color:var(--gray-400);font-size:12px;">至</span>
+          <input type="date" id="dashEndDate" class="form-input" style="max-width:140px;font-size:12px;" title="结束日期">
+          <button class="btn btn-sm" onclick="refreshDashboard()">🔄 刷新</button>
+          <button class="btn btn-primary btn-sm" onclick="exportReport()">📥 导出报表</button>
+        </div>
       </div>
-      <div class="stats-row">
-        <div class="stat-card blue"><div class="stat-icon blue">👥</div><div><div class="stat-num">156</div><div class="stat-lbl">员工总数</div></div></div>
-        <div class="stat-card green"><div class="stat-icon green">✅</div><div><div class="stat-num">142</div><div class="stat-lbl">本月出勤</div></div></div>
-        <div class="stat-card orange"><div class="stat-icon orange">⏳</div><div><div class="stat-num">8</div><div class="stat-lbl">待审批</div></div></div>
-        <div class="stat-card red"><div class="stat-icon red">⚠️</div><div><div class="stat-num">3</div><div class="stat-lbl">异常考勤</div></div></div>
+
+      <!-- 统计卡片 -->
+      <div class="stats-row" id="dashStatsRow">
+        <div class="stat-card blue"><div class="stat-icon blue">👥</div><div><div class="stat-num" id="dashTotalEmp">-</div><div class="stat-lbl">员工总数</div></div></div>
+        <div class="stat-card green"><div class="stat-icon green">🏢</div><div><div class="stat-num" id="dashTotalDept">-</div><div class="stat-lbl">部门总数</div></div></div>
+        <div class="stat-card orange"><div class="stat-icon orange">⏳</div><div><div class="stat-num" id="dashPending">-</div><div class="stat-lbl">待审批</div></div></div>
+        <div class="stat-card red"><div class="stat-icon red">⚠️</div><div><div class="stat-num" id="dashAnomaly">-</div><div class="stat-lbl">今日考勤异常</div></div></div>
+        <div class="stat-card blue"><div class="stat-icon blue">💊</div><div><div class="stat-num" id="dashMonthLeave">-</div><div class="stat-lbl">本月请假</div></div></div>
+        <div class="stat-card green"><div class="stat-icon green">💰</div><div><div class="stat-num" id="dashMonthExpense">-</div><div class="stat-lbl">本月报销(元)</div></div></div>
       </div>
+
+      <!-- 图表行1：部门柱状图 + 请假饼图 -->
       <div class="chart-row">
         <div class="chart-card">
           <div class="chart-hd">各部门人数分布</div>
-          <div class="bar-wrap">
-            <div class="bar" style="height:70%;"><div class="bar-lbl">研发部</div></div>
-            <div class="bar" style="height:50%;"><div class="bar-lbl">市场部</div></div>
-            <div class="bar" style="height:40%;"><div class="bar-lbl">产品部</div></div>
-            <div class="bar" style="height:30%;"><div class="bar-lbl">财务部</div></div>
-            <div class="bar" style="height:25%;"><div class="bar-lbl">人事部</div></div>
-          </div>
+          <div id="chartDeptBar" style="width:100%;height:280px;"></div>
         </div>
         <div class="chart-card">
           <div class="chart-hd">请假类型分布</div>
-          <div style="display:flex;align-items:center;justify-content:center;height:180px;">
-            <div class="pie-wrap" style="background:conic-gradient(#3b82f6 0% 35%, #10b981 35% 60%, #f59e0b 60% 80%, #8b5cf6 80% 100%);">
-              <div class="pie-c">45次</div>
-            </div>
-          </div>
-          <div class="leg">
-            <div class="leg-i"><div class="leg-dot" style="background:#3b82f6;"></div>病假 35%</div>
-            <div class="leg-i"><div class="leg-dot" style="background:#10b981;"></div>事假 25%</div>
-            <div class="leg-i"><div class="leg-dot" style="background:#f59e0b;"></div>年假 20%</div>
-            <div class="leg-i"><div class="leg-dot" style="background:#8b5cf6;"></div>调休 20%</div>
-          </div>
+          <div id="chartLeavePie" style="width:100%;height:280px;"></div>
         </div>
       </div>
-      <div class="card">
-        <div class="card-hd"><h3>近6个月报销金额趋势（元）</h3></div>
-        <div class="card-bd">
-          <div class="bar-wrap" style="height:180px;">
-            <div class="bar" style="height:40%;"><div class="bar-lbl">12月</div></div>
-            <div class="bar" style="height:55%;"><div class="bar-lbl">1月</div></div>
-            <div class="bar" style="height:45%;"><div class="bar-lbl">2月</div></div>
-            <div class="bar" style="height:65%;"><div class="bar-lbl">3月</div></div>
-            <div class="bar" style="height:78%;"><div class="bar-lbl">4月</div></div>
-            <div class="bar" style="height:68%;"><div class="bar-lbl">5月</div></div>
-          </div>
+
+      <!-- 图表行2：报销趋势折线图 + 考勤异常仪表盘 -->
+      <div class="chart-row">
+        <div class="chart-card">
+          <div class="chart-hd">报销金额趋势</div>
+          <div id="chartExpenseLine" style="width:100%;height:280px;"></div>
         </div>
-      </div>
-      <div class="card">
-        <div class="card-hd"><h3>本月报销金额 Top 5</h3></div>
-        <div class="card-bd zero">
-          <table>
-            <thead><tr><th class="txt-center">#</th><th>姓名</th><th>部门</th><th class="txt-center">次数</th><th class="txt-right">金额</th><th>状态</th></tr></thead>
-            <tbody>
-            <tr><td class="txt-center">1</td><td>张三</td><td>研发部</td><td class="txt-center">5</td><td class="txt-right">¥8,560</td><td><span class="tag t-green">已审批</span></td></tr>
-            <tr><td class="txt-center">2</td><td>李四</td><td>市场部</td><td class="txt-center">4</td><td class="txt-right">¥6,230</td><td><span class="tag t-green">已审批</span></td></tr>
-            <tr><td class="txt-center">3</td><td>王五</td><td>产品部</td><td class="txt-center">3</td><td class="txt-right">¥4,890</td><td><span class="tag t-yellow">待审批</span></td></tr>
-            <tr><td class="txt-center">4</td><td>赵六</td><td>财务部</td><td class="txt-center">2</td><td class="txt-right">¥3,450</td><td><span class="tag t-green">已审批</span></td></tr>
-            <tr><td class="txt-center">5</td><td>孙七</td><td>人事部</td><td class="txt-center">2</td><td class="txt-right">¥2,180</td><td><span class="tag t-yellow">待审批</span></td></tr>
-            </tbody>
-          </table>
+        <div class="chart-card">
+          <div class="chart-hd">考勤异常率</div>
+          <div id="chartAnomalyGauge" style="width:100%;height:280px;"></div>
         </div>
       </div>
     </div>

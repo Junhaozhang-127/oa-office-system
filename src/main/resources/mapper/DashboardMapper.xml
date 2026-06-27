@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.buu.oa.mapper.DashboardMapper">
+
+    <!-- ================================================================
+         首页统计卡片汇总
+         ================================================================ -->
+
+    <!-- 统计员工总数（仅在职+试用期） -->
+    <select id="selectEmployeeCount" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM emp_employee WHERE status IN (1, 2)
+    </select>
+
+    <!-- 统计启用部门数量 -->
+    <select id="selectDepartmentCount" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM sys_dept WHERE status = 1
+    </select>
+
+    <!-- 统计今日考勤异常数量（迟到+缺卡，不包含请假和正常） -->
+    <select id="selectTodayAnomalyCount" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM attendance_checkin
+        WHERE check_date = #{today} AND status IN (2, 3)
+    </select>
+
+    <!-- 统计待审批申请总数：请假PENDING + 加班PENDING + 报销PENDING/MANAGER_APPROVED -->
+    <select id="selectPendingApprovalCount" resultType="java.lang.Long">
+        SELECT (
+            (SELECT COUNT(*) FROM leave_application WHERE status = 'PENDING')
+            + (SELECT COUNT(*) FROM overtime_application WHERE status = 'PENDING')
+            + (SELECT COUNT(*) FROM expense_report WHERE status IN ('PENDING', 'MANAGER_APPROVED'))
+        )
+    </select>
+
+    <!-- 统计本月请假申请数量 -->
+    <select id="selectMonthLeaveCount" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM leave_application
+        WHERE create_time &gt;= #{startDate} AND create_time &lt; #{endDate}
+    </select>
+
+    <!-- 统计本月加班申请数量 -->
+    <select id="selectMonthOvertimeCount" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM overtime_application
+        WHERE create_time &gt;= #{startDate} AND create_time &lt; #{endDate}
+    </select>
+
+    <!-- 统计本月已通过报销总金额（COMPLETED + FINANCE_APPROVED） -->
+    <select id="selectMonthExpenseAmount" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(total_amount), 0) FROM expense_report
+        WHERE status IN ('COMPLETED', 'FINANCE_APPROVED')
+          AND create_time &gt;= #{startDate} AND create_time &lt; #{endDate}
+    </select>
+
+    <!-- 统计未读公告数量（所有已发布公告减去已读记录） -->
+    <select id="selectUnreadNoticeCount" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM sys_notice n
+        WHERE n.status = 1
+          AND n.id NOT IN (SELECT DISTINCT notice_id FROM sys_notice_read)
+    </select>
+
+    <!-- ================================================================
+         部门人数统计（含零员工部门，按排序号升序）
+         ================================================================ -->
+    <select id="selectDepartmentEmployeeCount" resultType="com.buu.oa.vo.DepartmentEmployeeCountVO">
+        SELECT
+            d.id AS departmentId,
+            d.dept_name AS departmentName,
+            COALESCE(COUNT(e.id), 0) AS employeeCount
+        FROM sys_dept d
+        LEFT JOIN emp_employee e ON e.dept_id = d.id AND e.status IN (1, 2)
+        WHERE d.status = 1
+        GROUP BY d.id, d.dept_name, d.sort
+        ORDER BY d.sort ASC
+    </select>
+
+    <!-- ================================================================
+         请假类型统计（按leave_type分组计数）
+         ================================================================ -->
+    <select id="selectLeaveTypeStatistics" resultType="com.buu.oa.vo.LeaveTypeStatisticsVO">
+        SELECT
+            leave_type AS leaveType,
+            COUNT(*) AS count
+        FROM leave_application
+        GROUP BY leave_type
+        ORDER BY leave_type
+    </select>
+
+    <!-- ================================================================
+         报销趋势统计（按日期汇总金额和单数，只统计已完成+财务已审批）
+         ================================================================ -->
+    <select id="selectReimbursementTrend" resultType="com.buu.oa.vo.ReimbursementTrendVO">
+        SELECT
+            DATE(create_time) AS date,
+            COALESCE(SUM(total_amount), 0) AS amount,
+            COUNT(*) AS count
+        FROM expense_report
+        WHERE status IN ('COMPLETED', 'FINANCE_APPROVED')
+          AND create_time &gt;= #{startDate}
+          AND create_time &lt; #{endDate}
+        GROUP BY DATE(create_time)
+        ORDER BY date ASC
+    </select>
+
+    <!-- ================================================================
+         考勤异常率统计（按日期范围汇总）
+         异常 = 迟到(status=2) + 缺卡(status=3)，不含请假
+         除零保护：totalCount为0时abnormalRate直接返回0（Java层二次兜底）
+         ================================================================ -->
+    <select id="selectAttendanceAnomalyRate" resultType="com.buu.oa.vo.AttendanceAnomalyRateVO">
+        SELECT
+            COUNT(*) AS totalCount,
+            SUM(CASE WHEN status IN (2, 3) THEN 1 ELSE 0 END) AS abnormalCount,
+            SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) AS normalCount,
+            CASE WHEN COUNT(*) = 0 THEN 0
+                 ELSE ROUND(SUM(CASE WHEN status IN (2, 3) THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2)
+            END AS abnormalRate
+        FROM attendance_checkin
+        WHERE check_date &gt;= #{startDate}
+          AND check_date &lt; #{endDate}
+    </select>
+
+    <!-- ================================================================
+         导出查询
+         ================================================================ -->
+
+    <!-- 导出：员工信息（含部门名称） -->
+    <select id="selectEmployeeExportList" resultType="java.util.HashMap">
+        SELECT
+            e.emp_no AS empNo,
+            e.name AS name,
+            CASE e.gender WHEN 1 THEN '男' ELSE '女' END AS gender,
+            d.dept_name AS deptName,
+            e.position AS position,
+            e.entry_date AS entryDate,
+            CASE e.status
+                WHEN 1 THEN '在职'
+                WHEN 2 THEN '试用期'
+                WHEN 3 THEN '离职'
+                ELSE '未知'
+            END AS status,
+            e.phone AS phone,
+            e.email AS email
+        FROM emp_employee e
+        LEFT JOIN sys_dept d ON e.dept_id = d.id
+        ORDER BY e.id
+    </select>
+
+    <!-- 导出：考勤记录（按日期范围） -->
+    <select id="selectAttendanceExportList" resultType="java.util.HashMap">
+        SELECT
+            e.name AS empName,
+            d.dept_name AS deptName,
+            ac.check_date AS checkDate,
+            ac.check_in_time AS checkInTime,
+            ac.check_out_time AS checkOutTime,
+            CASE ac.status
+                WHEN 1 THEN '正常'
+                WHEN 2 THEN '迟到'
+                WHEN 3 THEN '缺卡'
+                WHEN 4 THEN '请假'
+                ELSE '未知'
+            END AS status
+        FROM attendance_checkin ac
+        LEFT JOIN emp_employee e ON ac.emp_id = e.id
+        LEFT JOIN sys_dept d ON e.dept_id = d.id
+        WHERE ac.check_date &gt;= #{startDate}
+          AND ac.check_date &lt; #{endDate}
+        ORDER BY ac.check_date DESC, e.name
+    </select>
+
+    <!-- 导出：请假申请（按日期范围） -->
+    <select id="selectLeaveExportList" resultType="java.util.HashMap">
+        SELECT
+            la.leave_no AS leaveNo,
+            e.name AS empName,
+            d.dept_name AS deptName,
+            CASE la.leave_type
+                WHEN 1 THEN '病假'
+                WHEN 2 THEN '事假'
+                WHEN 3 THEN '年假'
+                WHEN 4 THEN '调休'
+                WHEN 5 THEN '婚假'
+                WHEN 6 THEN '产假'
+                WHEN 7 THEN '其他'
+                ELSE '未知'
+            END AS leaveType,
+            la.start_date AS startDate,
+            la.end_date AS endDate,
+            la.days AS days,
+            la.reason AS reason,
+            CASE la.status
+                WHEN 'PENDING' THEN '待审批'
+                WHEN 'MANAGER_APPROVED' THEN '经理已审批'
+                WHEN 'FINANCE_APPROVED' THEN '财务已审批'
+                WHEN 'REJECTED' THEN '已驳回'
+                WHEN 'COMPLETED' THEN '已完成'
+                ELSE la.status
+            END AS status,
+            la.create_time AS createTime
+        FROM leave_application la
+        LEFT JOIN emp_employee e ON la.emp_id = e.id
+        LEFT JOIN sys_dept d ON e.dept_id = d.id
+        WHERE la.create_time &gt;= #{startDate}
+          AND la.create_time &lt; #{endDate}
+        ORDER BY la.create_time DESC
+    </select>
+
+    <!-- 导出：加班申请（按日期范围） -->
+    <select id="selectOvertimeExportList" resultType="java.util.HashMap">
+        SELECT
+            oa.overtime_no AS overtimeNo,
+            e.name AS empName,
+            d.dept_name AS deptName,
+            CASE oa.overtime_type
+                WHEN 1 THEN '工作日加班'
+                WHEN 2 THEN '周末加班'
+                WHEN 3 THEN '节假日加班'
+                ELSE '未知'
+            END AS overtimeType,
+            oa.start_time AS startTime,
+            oa.end_time AS endTime,
+            oa.hours AS hours,
+            oa.reason AS reason,
+            CASE oa.status
+                WHEN 'PENDING' THEN '待审批'
+                WHEN 'MANAGER_APPROVED' THEN '经理已审批'
+                WHEN 'FINANCE_APPROVED' THEN '财务已审批'
+                WHEN 'REJECTED' THEN '已驳回'
+                WHEN 'COMPLETED' THEN '已完成'
+                ELSE oa.status
+            END AS status,
+            oa.create_time AS createTime
+        FROM overtime_application oa
+        LEFT JOIN emp_employee e ON oa.emp_id = e.id
+        LEFT JOIN sys_dept d ON e.dept_id = d.id
+        WHERE oa.create_time &gt;= #{startDate}
+          AND oa.create_time &lt; #{endDate}
+        ORDER BY oa.create_time DESC
+    </select>
+
+    <!-- 导出：报销记录（按日期范围） -->
+    <select id="selectExpenseExportList" resultType="java.util.HashMap">
+        SELECT
+            er.report_no AS reportNo,
+            e.name AS empName,
+            d.dept_name AS deptName,
+            er.expense_type AS expenseType,
+            er.total_amount AS totalAmount,
+            er.description AS description,
+            CASE er.status
+                WHEN 'PENDING' THEN '待审批'
+                WHEN 'MANAGER_APPROVED' THEN '经理已审批'
+                WHEN 'FINANCE_APPROVED' THEN '财务已审批'
+                WHEN 'REJECTED' THEN '已驳回'
+                WHEN 'COMPLETED' THEN '已完成'
+                ELSE er.status
+            END AS status,
+            er.create_time AS createTime
+        FROM expense_report er
+        LEFT JOIN emp_employee e ON er.emp_id = e.id
+        LEFT JOIN sys_dept d ON e.dept_id = d.id
+        WHERE er.create_time &gt;= #{startDate}
+          AND er.create_time &lt; #{endDate}
+        ORDER BY er.create_time DESC
+    </select>
+
+    <!-- 导出：审批记录 -->
+    <select id="selectApprovalExportList" resultType="java.util.HashMap">
+        SELECT
+            ar.business_type AS businessType,
+            CASE ar.business_type
+                WHEN 'LEAVE' THEN '请假'
+                WHEN 'OVERTIME' THEN '加班'
+                WHEN 'EXPENSE' THEN '报销'
+                ELSE ar.business_type
+            END AS businessTypeText,
+            ar.business_id AS businessId,
+            e.name AS approverName,
+            CASE ar.approval_result
+                WHEN 1 THEN '通过'
+                WHEN 2 THEN '驳回'
+                ELSE '未知'
+            END AS approvalResult,
+            ar.approval_opinion AS approvalOpinion,
+            ar.approval_time AS approvalTime
+        FROM approval_record ar
+        LEFT JOIN emp_employee e ON ar.approver_id = e.id
+        ORDER BY ar.approval_time DESC
+    </select>
+
+</mapper>

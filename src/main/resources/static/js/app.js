@@ -6,13 +6,20 @@ var currentMonth = new Date().getMonth() + 1;
 
 /* ---------- 面板切换 ---------- */
 function switchTab(n, el) {
+  // 离开数据看板时销毁图表
+  if (n !== 2) disposeAllCharts();
+
   document.querySelectorAll('.panel').forEach(function(p, i) { p.classList.toggle('active', i === n); });
   document.querySelectorAll('.nav-item').forEach(function(i) { i.classList.remove('active'); });
   if (el) el.classList.add('active');
   var titles = ['工作台', '考勤日历', '数据看板', '审批流', '通知中心', '会议预约', '请假申请', '加班申请', '我的申请'];
   document.getElementById('crumbText').textContent = titles[n];
+  // 离开数据看板时销毁图表
+  if (n !== 2) disposeAllCharts();
+
   if (n === 0) loadEmployeeList();
   if (n === 1) { loadCalendar(); loadCalendarStats(); }
+  if (n === 2) loadDashboard();
   if (n === 5) { loadMeetingRoomList(); loadMyReservations(); loadScheduleSelects(); }
   if (n === 6) { populateLeaveEmpSelect(); }
   if (n === 7) { populateOvertimeEmpSelect(); }
@@ -879,4 +886,332 @@ function getAppTypeClass(type) {
   if (type === 'OVERTIME') return 't-green';
   return 't-gray';
 }
+
+function formatDateTime(dt) {
+  if (!dt) return null;
+  if (typeof dt === 'string' && dt.indexOf('T') > -1) {
+    return dt.replace('T', ' ').substring(0, 19);
+  }
+  return dt;
+}
+
+/* ================================================================
+ * 数据看板模块 — ECharts图表 + 统计卡片 + 报表导出
+ * ================================================================ */
+var dashCharts = {};
+
+/** 图表颜色体系（与CSS变量对齐） */
+var CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#ec4899', '#06b6d4'];
+
+/** 初始化日期筛选默认值（本月） */
+function initDashboardDates() {
+  var now = new Date();
+  var year = now.getFullYear();
+  var month = String(now.getMonth() + 1).padStart(2, '0');
+  var firstDay = year + '-' + month + '-01';
+  var lastDay = new Date(year, now.getMonth() + 1, 0);
+  var endStr = lastDay.getFullYear() + '-' + String(lastDay.getMonth() + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
+
+  var startEl = document.getElementById('dashStartDate');
+  var endEl = document.getElementById('dashEndDate');
+  if (startEl && !startEl.value) startEl.value = firstDay;
+  if (endEl && !endEl.value) endEl.value = endStr;
+}
+
+/** 加载所有看板数据 */
+function loadDashboard() {
+  initDashboardDates();
+  loadDashboardSummary();
+  loadDeptBarChart();
+  loadLeavePieChart();
+  loadExpenseLineChart();
+  loadAnomalyGaugeChart();
+}
+
+/** 刷新看板 */
+function refreshDashboard() {
+  disposeAllCharts();
+  loadDashboard();
+}
+
+/** 加载首页统计卡片 */
+function loadDashboardSummary() {
+  fetch('/api/dashboard/summary')
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.code === 200) {
+        var d = res.data;
+        document.getElementById('dashTotalEmp').textContent = d.totalEmployees || 0;
+        document.getElementById('dashTotalDept').textContent = d.totalDepartments || 0;
+        document.getElementById('dashPending').textContent = d.pendingApprovals || 0;
+        document.getElementById('dashAnomaly').textContent = d.todayAnomalies || 0;
+        document.getElementById('dashMonthLeave').textContent = d.monthLeaveCount || 0;
+        var amt = d.monthExpenseAmount != null ? Number(d.monthExpenseAmount).toLocaleString() : '0';
+        document.getElementById('dashMonthExpense').textContent = amt;
+      }
+    })
+    .catch(function(e) {
+      console.error('统计卡片加载失败:', e);
+    });
+}
+
+/** 部门人数柱状图 */
+function loadDeptBarChart() {
+  var dom = document.getElementById('chartDeptBar');
+  if (!dom) return;
+  if (dashCharts.deptBar) dashCharts.deptBar.dispose();
+
+  var chart = echarts.init(dom);
+  dashCharts.deptBar = chart;
+  chart.showLoading({ text: '加载中...', color: '#3b82f6', maskColor: 'rgba(255,255,255,0.8)' });
+
+  fetch('/api/dashboard/department-count')
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      chart.hideLoading();
+      if (res.code === 200 && res.data && res.data.length > 0) {
+        var names = [], values = [];
+        for (var i = 0; i < res.data.length; i++) {
+          names.push(res.data[i].departmentName);
+          values.push(res.data[i].employeeCount);
+        }
+        chart.setOption({
+          tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+          grid: { left: '3%', right: '4%', bottom: '10%', top: '5%', containLabel: true },
+          xAxis: { type: 'category', data: names, axisLabel: { fontSize: 11, color: '#64748b' } },
+          yAxis: { type: 'value', name: '人数', nameTextStyle: { fontSize: 11, color: '#94a3b8' },
+            axisLabel: { fontSize: 11, color: '#64748b' }, splitLine: { lineStyle: { color: '#f1f5f9' } } },
+          series: [{ type: 'bar', data: values, itemStyle: { color: '#3b82f6', borderRadius: [6, 6, 0, 0] },
+            barWidth: '50%', emphasis: { itemStyle: { color: '#2563eb' } } }]
+        });
+      } else {
+        chart.setOption({ title: { text: '暂无数据', left: 'center', top: 'center',
+          textStyle: { color: '#94a3b8', fontSize: 14, fontWeight: 400 } } });
+      }
+    })
+    .catch(function(e) {
+      chart.hideLoading();
+      console.error('部门人数图表加载失败:', e);
+      chart.setOption({ title: { text: '加载失败', left: 'center', top: 'center',
+        textStyle: { color: '#ef4444', fontSize: 14 } } });
+    });
+}
+
+/** 请假类型饼图 */
+function loadLeavePieChart() {
+  var dom = document.getElementById('chartLeavePie');
+  if (!dom) return;
+  if (dashCharts.leavePie) dashCharts.leavePie.dispose();
+
+  var chart = echarts.init(dom);
+  dashCharts.leavePie = chart;
+  chart.showLoading({ text: '加载中...', color: '#3b82f6', maskColor: 'rgba(255,255,255,0.8)' });
+
+  fetch('/api/dashboard/leave-type-stats')
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      chart.hideLoading();
+      if (res.code === 200 && res.data && res.data.length > 0) {
+        var pieData = [];
+        for (var i = 0; i < res.data.length; i++) {
+          pieData.push({ name: res.data[i].leaveTypeName, value: res.data[i].count });
+        }
+        chart.setOption({
+          tooltip: { trigger: 'item', formatter: '{b}: {c} 次 ({d}%)' },
+          legend: { orient: 'horizontal', bottom: 0, textStyle: { fontSize: 11, color: '#64748b' } },
+          series: [{
+            type: 'pie', radius: ['45%', '72%'], center: ['50%', '48%'],
+            itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 3 },
+            label: { show: true, fontSize: 10, color: '#64748b' },
+            emphasis: { label: { fontSize: 14, fontWeight: 'bold' } },
+            data: pieData
+          }]
+        });
+      } else {
+        chart.setOption({ title: { text: '暂无数据', left: 'center', top: 'center',
+          textStyle: { color: '#94a3b8', fontSize: 14, fontWeight: 400 } } });
+      }
+    })
+    .catch(function(e) {
+      chart.hideLoading();
+      console.error('请假类型图表加载失败:', e);
+      chart.setOption({ title: { text: '加载失败', left: 'center', top: 'center',
+        textStyle: { color: '#ef4444', fontSize: 14 } } });
+    });
+}
+
+/** 报销趋势折线图 */
+function loadExpenseLineChart() {
+  var dom = document.getElementById('chartExpenseLine');
+  if (!dom) return;
+  if (dashCharts.expenseLine) dashCharts.expenseLine.dispose();
+
+  var chart = echarts.init(dom);
+  dashCharts.expenseLine = chart;
+  chart.showLoading({ text: '加载中...', color: '#3b82f6', maskColor: 'rgba(255,255,255,0.8)' });
+
+  var startDate = document.getElementById('dashStartDate').value;
+  var endDate = document.getElementById('dashEndDate').value;
+  var params = '';
+  if (startDate) params += '&startDate=' + startDate;
+  if (endDate) params += '&endDate=' + endDate;
+
+  fetch('/api/dashboard/reimbursement-trend?' + params.substring(1))
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      chart.hideLoading();
+      if (res.code === 200 && res.data && res.data.length > 0) {
+        var dates = [], amounts = [], counts = [];
+        for (var i = 0; i < res.data.length; i++) {
+          dates.push(res.data[i].date);
+          amounts.push(Number(res.data[i].amount));
+          counts.push(res.data[i].count);
+        }
+        chart.setOption({
+          tooltip: { trigger: 'axis', formatter: function(params) {
+            var d = params[0]; return d.axisValue + '<br/>金额: ¥' + d.value.toLocaleString() + '<br/>单数: ' + counts[d.dataIndex];
+          }},
+          grid: { left: '3%', right: '4%', bottom: '10%', top: '5%', containLabel: true },
+          xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 10, color: '#64748b', rotate: 30 } },
+          yAxis: { type: 'value', name: '金额(元)', nameTextStyle: { fontSize: 11, color: '#94a3b8' },
+            axisLabel: { fontSize: 11, color: '#64748b' }, splitLine: { lineStyle: { color: '#f1f5f9' } } },
+          series: [{
+            type: 'line', data: amounts, smooth: true, symbol: 'circle', symbolSize: 6,
+            lineStyle: { color: '#3b82f6', width: 2.5 },
+            itemStyle: { color: '#3b82f6' },
+            areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1,
+              [{ offset: 0, color: 'rgba(59,130,246,0.25)' }, { offset: 1, color: 'rgba(59,130,246,0.02)' }]) }
+          }]
+        });
+      } else {
+        chart.setOption({ title: { text: '暂无数据', left: 'center', top: 'center',
+          textStyle: { color: '#94a3b8', fontSize: 14, fontWeight: 400 } } });
+      }
+    })
+    .catch(function(e) {
+      chart.hideLoading();
+      console.error('报销趋势图表加载失败:', e);
+      chart.setOption({ title: { text: '加载失败', left: 'center', top: 'center',
+        textStyle: { color: '#ef4444', fontSize: 14 } } });
+    });
+}
+
+/** 考勤异常率仪表盘 */
+function loadAnomalyGaugeChart() {
+  var dom = document.getElementById('chartAnomalyGauge');
+  if (!dom) return;
+  if (dashCharts.anomalyGauge) dashCharts.anomalyGauge.dispose();
+
+  var chart = echarts.init(dom);
+  dashCharts.anomalyGauge = chart;
+  chart.showLoading({ text: '加载中...', color: '#3b82f6', maskColor: 'rgba(255,255,255,0.8)' });
+
+  var startDate = document.getElementById('dashStartDate').value;
+  var endDate = document.getElementById('dashEndDate').value;
+  var params = '';
+  if (startDate) params += '&startDate=' + startDate;
+  if (endDate) params += '&endDate=' + endDate;
+
+  fetch('/api/dashboard/attendance-anomaly?' + params.substring(1))
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      chart.hideLoading();
+      if (res.code === 200 && res.data) {
+        var d = res.data;
+        var rate = d.abnormalRate != null ? Number(d.abnormalRate) : 0;
+        chart.setOption({
+          series: [{
+            type: 'gauge', startAngle: 210, endAngle: -30, center: ['50%', '55%'], radius: '85%',
+            min: 0, max: 100, splitNumber: 10,
+            axisLine: { lineStyle: { width: 14,
+              color: [[0.3, '#10b981'], [0.6, '#f59e0b'], [1, '#ef4444']] } },
+            pointer: { length: '60%', width: 6, itemStyle: { color: '#334155' } },
+            axisTick: { distance: -14, length: 6, lineStyle: { width: 1.5, color: '#94a3b8' } },
+            splitLine: { distance: -18, length: 14, lineStyle: { width: 2.5, color: '#94a3b8' } },
+            axisLabel: { color: '#64748b', fontSize: 10, distance: 20 },
+            anchor: { show: true, showAbove: true, size: 18, itemStyle: { borderWidth: 1.5 } },
+            title: { offsetCenter: [0, '75%'], fontSize: 12, color: '#64748b' },
+            detail: {
+              valueAnimation: true, fontSize: 18, fontWeight: 700,
+              offsetCenter: [0, '55%'], color: '#1e293b',
+              formatter: function(v) { return v.toFixed(1) + '%'; }
+            },
+            data: [{ value: rate, name: '异常率' }]
+          }],
+          graphic: [
+            { type: 'text', left: 'center', bottom: 14,
+              style: { text: '正常 ' + (d.normalCount || 0) + ' | 异常 ' + (d.abnormalCount || 0) + ' | 总计 ' + (d.totalCount || 0),
+                fontSize: 11, fill: '#94a3b8', fontWeight: 500 } }
+          ]
+        });
+      } else {
+        chart.setOption({ title: { text: '暂无数据', left: 'center', top: 'center',
+          textStyle: { color: '#94a3b8', fontSize: 14, fontWeight: 400 } } });
+      }
+    })
+    .catch(function(e) {
+      chart.hideLoading();
+      console.error('考勤异常率图表加载失败:', e);
+      chart.setOption({ title: { text: '加载失败', left: 'center', top: 'center',
+        textStyle: { color: '#ef4444', fontSize: 14 } } });
+    });
+}
+
+/** 销毁所有图表实例 */
+function disposeAllCharts() {
+  Object.keys(dashCharts).forEach(function(key) {
+    if (dashCharts[key]) {
+      dashCharts[key].dispose();
+      delete dashCharts[key];
+    }
+  });
+}
+
+/** 报表导出 */
+function exportReport() {
+  var startDate = document.getElementById('dashStartDate').value;
+  var endDate = document.getElementById('dashEndDate').value;
+  var params = '';
+  if (startDate) params += '&startDate=' + startDate;
+  if (endDate) params += '&endDate=' + endDate;
+
+  var btn = document.querySelector('.btn-primary.btn-sm');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 导出中...'; }
+
+  fetch('/api/reports/export?' + params.substring(1))
+    .then(function(r) {
+      if (!r.ok) throw new Error('导出失败: HTTP ' + r.status);
+      // 从 Content-Disposition 获取文件名
+      var disposition = r.headers.get('Content-Disposition');
+      var fileName = 'OA统计报表.xlsx';
+      if (disposition) {
+        var match = disposition.match(/filename\*?=(?:UTF-8'')?([^;]+)/);
+        if (match) fileName = decodeURIComponent(match[1].replace(/"/g, ''));
+      }
+      return r.blob().then(function(blob) { return { blob: blob, fileName: fileName }; });
+    })
+    .then(function(result) {
+      var url = window.URL.createObjectURL(result.blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = result.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      if (btn) { btn.disabled = false; btn.textContent = '📥 导出报表'; }
+    })
+    .catch(function(e) {
+      console.error('报表导出失败:', e);
+      alert('报表导出失败：' + e.message);
+      if (btn) { btn.disabled = false; btn.textContent = '📥 导出报表'; }
+    });
+}
+
+/** 窗口大小变化时resize所有图表 */
+window.addEventListener('resize', function() {
+  Object.keys(dashCharts).forEach(function(key) {
+    if (dashCharts[key]) dashCharts[key].resize();
+  });
+});
 
