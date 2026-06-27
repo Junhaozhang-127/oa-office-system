@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.buu.oa.mapper.MeetingReservationMapper">
+
+    <!--
+        冲突检测：查询同一会议室在指定时间段内是否存在重叠的有效预约
+        重叠条件：已有预约 start_time < 新预约 end_time 且 已有预约 end_time > 新预约 start_time
+        该条件覆盖全部四种时间重叠场景
+    -->
+    <select id="countConflict" resultType="int">
+        SELECT COUNT(*)
+        FROM meeting_reservation
+        WHERE room_id = #{roomId}
+          AND status = 1
+          AND start_time &lt; #{endTime}
+          AND end_time &gt; #{startTime}
+    </select>
+
+    <!-- 查询员工全部预约记录，按开始时间倒序 -->
+    <select id="selectByEmpId" resultType="com.buu.oa.entity.MeetingReservation">
+        SELECT id, reservation_no, room_id, emp_id, meeting_title,
+               start_time, end_time, description, remind_status, status,
+               create_time, update_time
+        FROM meeting_reservation
+        WHERE emp_id = #{empId}
+        ORDER BY start_time DESC
+    </select>
+
+    <!--
+        查询指定会议室某日的预约记录，联表查询会议室名称
+        返回Map便于前端直接展示
+    -->
+    <select id="selectReservationsWithRoom" resultType="java.util.HashMap">
+        SELECT mr.id, mr.reservation_no AS reservationNo, mr.room_id AS roomId,
+               mr.emp_id AS empId, mr.meeting_title AS meetingTitle,
+               mr.start_time AS startTime, mr.end_time AS endTime,
+               mr.description, mr.status,
+               rm.room_name AS roomName
+        FROM meeting_reservation mr
+        LEFT JOIN meeting_room rm ON mr.room_id = rm.id
+        WHERE mr.room_id = #{roomId}
+          AND DATE(mr.start_time) = #{date}
+          AND mr.status = 1
+        ORDER BY mr.start_time ASC
+    </select>
+
+    <!-- 查询当日最大预约序号，用于预约单号生成 -->
+    <select id="selectMaxSeqByDate" resultType="int">
+        SELECT COALESCE(MAX(CAST(SUBSTRING(reservation_no, 11) AS UNSIGNED)), 0)
+        FROM meeting_reservation
+        WHERE reservation_no LIKE CONCAT('HY', #{datePrefix}, '%')
+    </select>
+
+</mapper>

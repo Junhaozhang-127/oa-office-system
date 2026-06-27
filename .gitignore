@@ -31,3 +31,13 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Node ###
+node_modules/
+package.json
+package-lock.json
+
+### Dev Tooling ###
+.mcp.json
+e2e/
+test-results/

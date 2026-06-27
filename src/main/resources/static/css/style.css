@@ -606,6 +606,7 @@ tbody tr:last-child td { border-bottom: none; }
  * ============================================================ */
 .cal-loading { text-align: center; padding: 52px; color: var(--gray-400); font-size: 13px; }
 .cal-loading::before { content: ""; display: block; width: 32px; height: 32px; border: 3px solid var(--gray-200); border-top-color: var(--brand-500); border-radius: 50%; animation: spin 0.65s linear infinite; margin: 0 auto 14px; }
+.cal-placeholder { text-align: center; padding: 52px; color: var(--gray-500); font-size: 13px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .cal-error { text-align: center; padding: 52px; color: var(--danger); font-size: 13px; line-height: 1.7; }
 .cal-error::before { content: "!"; display: block; width: 30px; height: 30px; border: 2px solid var(--danger); border-radius: 50%; margin: 0 auto 12px; font-weight: 800; font-size: 16px; line-height: 26px; }
@@ -619,6 +620,7 @@ tbody tr:last-child td { border-bottom: none; }
 }
 @media (max-width: 900px) {
   .chart-row { grid-template-columns: 1fr; }
+  .meeting-row { grid-template-columns: 1fr; }
   .sidebar { width: 60px; }
   .sidebar .nav-group-label,
   .sidebar .nav-item span:not(.nav-icon),
@@ -628,8 +630,188 @@ tbody tr:last-child td { border-bottom: none; }
   .stats-row { grid-template-columns: 1fr 1fr; gap: 10px; }
   .cal-header { flex-direction: column; align-items: flex-start; }
 }
+/* ============================================================
+ * MEETING ROOM
+ * ============================================================ */
+.meeting-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.meeting-left, .meeting-right { min-width: 0; }
+
+/* Room cards */
+.room-card {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--gray-100);
+  transition: background 0.15s;
+}
+.room-card:last-child { border-bottom: none; }
+.room-card:hover { background: var(--gray-50); }
+.room-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.room-card-name { font-size: 15px; font-weight: 700; color: var(--gray-800); }
+.room-card-code {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--brand-600);
+  background: var(--brand-50);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.room-card-body { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.room-card-info { font-size: 12.5px; color: var(--gray-500); display: flex; align-items: center; gap: 6px; }
+.room-card-icon { font-size: 13px; flex-shrink: 0; }
+.room-card-footer { display: flex; justify-content: flex-end; }
+
+/* Form styles */
+.form-grid { display: flex; flex-direction: column; gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gray-500);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.form-control {
+  padding: 8px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--gray-800);
+  background: #fff;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+}
+.form-control:focus {
+  outline: none;
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+}
+.form-control-sm { padding: 6px 10px; font-size: 12px; }
+textarea.form-control { resize: vertical; min-height: 70px; }
+
+/* Form messages */
+.form-msg {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.form-msg-success { background: var(--success-bg); color: #059669; border: 1px solid #a7f3d0; }
+.form-msg-error   { background: var(--danger-bg);  color: #dc2626; border: 1px solid #fecaca; }
+
+/* Alert */
+.alert-danger {
+  background: var(--danger-bg);
+  color: #dc2626;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #fecaca;
+  font-size: 13px;
+  font-weight: 500;
+}
+
 @media (max-width: 560px) {
   .stats-row { grid-template-columns: 1fr; }
   .flow-line { flex-direction: column; align-items: flex-start; }
   .flow-arrow { transform: rotate(90deg); }
+}
+
+/* ---------- 表单组件 ---------- */
+.form-group {
+  margin-bottom: 18px;
+}
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: 6px;
+}
+.form-required {
+  color: var(--danger);
+  font-weight: 700;
+}
+.form-input {
+  width: 100%;
+  max-width: 360px;
+  padding: 9px 12px;
+  font-size: 13px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-xs);
+  background: #fff;
+  color: var(--gray-800);
+  font-family: inherit;
+  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+  box-sizing: border-box;
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+}
+.form-textarea {
+  width: 100%;
+  max-width: 560px;
+  padding: 10px 12px;
+  font-size: 13px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-xs);
+  background: #fff;
+  color: var(--gray-800);
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+  box-sizing: border-box;
+}
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+}
+.form-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.form-row .form-group {
+  flex: 1;
+  min-width: 160px;
+}
+.form-static {
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--brand-600);
+  padding: 9px 0;
+}
+.form-actions {
+  margin-top: 24px;
+  display: flex;
+  gap: 10px;
+}
+.form-msg {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: var(--radius-xs);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.form-msg-success {
+  background: var(--success-bg);
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+.form-msg-error {
+  background: var(--danger-bg);
+  color: #991b1b;
+  border: 1px solid #fecaca;
 }

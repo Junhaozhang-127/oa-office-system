@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.buu.oa.mapper.LeaveApplicationMapper">
+
+    <!-- selectByEmpId: 按员工ID查询请假申请，按创建时间倒序 -->
+    <select id="selectByEmpId" resultType="java.util.HashMap">
+        SELECT la.id,
+               la.leave_no   AS leaveNo,
+               la.emp_id     AS empId,
+               e.name        AS empName,
+               la.leave_type AS leaveType,
+               la.start_date AS startDate,
+               la.end_date   AS endDate,
+               la.days       AS days,
+               la.reason     AS reason,
+               la.status     AS status,
+               la.create_time AS createTime
+        FROM leave_application la
+                 LEFT JOIN emp_employee e ON la.emp_id = e.id
+        WHERE la.emp_id = #{empId}
+        ORDER BY la.create_time DESC
+    </select>
+
+</mapper>
