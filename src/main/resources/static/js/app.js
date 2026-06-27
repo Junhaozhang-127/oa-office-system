@@ -9,10 +9,11 @@ function switchTab(n, el) {
   document.querySelectorAll('.panel').forEach(function(p, i) { p.classList.toggle('active', i === n); });
   document.querySelectorAll('.nav-item').forEach(function(i) { i.classList.remove('active'); });
   if (el) el.classList.add('active');
-  var titles = ['工作台', '考勤日历', '数据看板', '审批流', '通知中心'];
+  var titles = ['工作台', '考勤日历', '数据看板', '审批流', '通知中心', '会议预约'];
   document.getElementById('crumbText').textContent = titles[n];
   if (n === 0) loadEmployeeList();
   if (n === 1) { loadCalendar(); loadCalendarStats(); }
+  if (n === 5) { loadMeetingRoomList(); loadMyReservations(); loadScheduleSelects(); }
 }
 
 /* ---------- 考勤日历模块（日历网格与月度统计独立） ---------- */
@@ -162,6 +163,11 @@ function loadEmployeeSelect() {
           html += '<option value="' + emp.id + '">' + emp.name + ' (' + emp.empNo + ')</option>';
         }
         select.innerHTML = html;
+        // 同步到会议预约模块的员工下拉框
+        var bookingSelect = document.getElementById('bookingEmpSelect');
+        var myMeetingSelect = document.getElementById('myMeetingEmpSelect');
+        if (bookingSelect) bookingSelect.innerHTML = html;
+        if (myMeetingSelect) myMeetingSelect.innerHTML = html;
         // 加载完员工列表后，初始化工作台员工表格和考勤日历
         loadEmployeeList();
         loadCalendar();
@@ -287,3 +293,325 @@ function getAttendanceStatusClass(status) {
     default: return 't-gray';
   }
 }
+
+/* ================================================================
+ * 会议预约模块
+ * ================================================================ */
+
+/* ---------- 会议室列表加载 ---------- */
+function loadMeetingRoomList() {
+  var container = document.getElementById('meetingRoomList');
+  if (!container) return;
+  container.innerHTML = '<div class="cal-loading">加载中...</div>';
+
+  fetch('/api/meeting-room/list')
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(res) {
+      if (res.code === 200) {
+        renderMeetingRoomCards(res.data);
+        document.getElementById('statRoomCount').textContent = res.data.length;
+        document.getElementById('meetingRoomCountHint').textContent = res.data.length + '间';
+        populateBookingRoomSelect(res.data);
+      } else {
+        container.innerHTML = '<div class="cal-error">加载失败：' + res.msg + '</div>';
+      }
+    })
+    .catch(function(e) {
+      container.innerHTML = '<div class="cal-error">网络请求失败：' + e.message + '</div>';
+    });
+}
+
+function renderMeetingRoomCards(rooms) {
+  var html = '';
+  for (var i = 0; i < rooms.length; i++) {
+    var r = rooms[i];
+    html += '<div class="room-card">'
+      + '<div class="room-card-header">'
+      + '<span class="room-card-name">' + escapeHtml(r.roomName) + '</span>'
+      + '<span class="room-card-code">' + escapeHtml(r.roomCode) + '</span>'
+      + '</div>'
+      + '<div class="room-card-body">'
+      + '<div class="room-card-info">'
+      + '<span class="room-card-icon">&#x1f465;</span> 容纳 ' + r.capacity + ' 人'
+      + '</div>'
+      + '<div class="room-card-info">'
+      + '<span class="room-card-icon">&#x1f4cd;</span> ' + escapeHtml(r.location || '未设置')
+      + '</div>'
+      + '</div>'
+      + '<div class="room-card-footer">'
+      + '<button class="btn btn-sm" onclick="selectBookingRoom(' + r.id + ',\'' + escapeHtml(r.roomName) + '\')">预约此会议室</button>'
+      + '</div>'
+      + '</div>';
+  }
+  if (rooms.length === 0) {
+    html = '<div style="text-align:center;padding:40px;color:var(--gray-400);">暂无可用的会议室</div>';
+  }
+  document.getElementById('meetingRoomList').innerHTML = html;
+}
+
+function populateBookingRoomSelect(rooms) {
+  var select = document.getElementById('bookingRoomSelect');
+  var scheduleSelect = document.getElementById('scheduleRoomSelect');
+  var html = '<option value="">请选择会议室</option>';
+  for (var i = 0; i < rooms.length; i++) {
+    html += '<option value="' + rooms[i].id + '">' + escapeHtml(rooms[i].roomName) + ' (' + escapeHtml(rooms[i].roomCode) + ')</option>';
+  }
+  if (select) select.innerHTML = html;
+  if (scheduleSelect) scheduleSelect.innerHTML = html;
+}
+
+function selectBookingRoom(roomId, roomName) {
+  var select = document.getElementById('bookingRoomSelect');
+  if (select) {
+    select.value = roomId;
+    select.scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+/* ---------- 预约表单提交 ---------- */
+function submitReservation() {
+  var msgEl = document.getElementById('bookingFormMsg');
+  msgEl.style.display = 'none';
+
+  var roomId = document.getElementById('bookingRoomSelect').value;
+  var empId = document.getElementById('bookingEmpSelect').value;
+  var dateVal = document.getElementById('bookingDate').value;
+  var startTimeVal = document.getElementById('bookingStartTime').value;
+  var endTimeVal = document.getElementById('bookingEndTime').value;
+  var title = document.getElementById('bookingTitle').value.trim();
+  var desc = document.getElementById('bookingDesc').value.trim();
+
+  if (!roomId)  { showFormMsg('请选择会议室', 'error'); return; }
+  if (!empId)   { showFormMsg('请选择预约人', 'error'); return; }
+  if (!dateVal) { showFormMsg('请选择预约日期', 'error'); return; }
+  if (!startTimeVal) { showFormMsg('请选择开始时间', 'error'); return; }
+  if (!endTimeVal)   { showFormMsg('请选择结束时间', 'error'); return; }
+  if (!title)   { showFormMsg('请输入会议主题', 'error'); return; }
+
+  if (endTimeVal <= startTimeVal) {
+    showFormMsg('结束时间必须大于开始时间', 'error');
+    return;
+  }
+
+  var startTime = dateVal + 'T' + startTimeVal + ':00';
+  var endTime = dateVal + 'T' + endTimeVal + ':00';
+
+  var formData = new URLSearchParams();
+  formData.append('roomId', roomId);
+  formData.append('empId', empId);
+  formData.append('meetingTitle', title);
+  formData.append('startTime', startTime);
+  formData.append('endTime', endTime);
+  formData.append('description', desc);
+
+  fetch('/api/meeting-reservation/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: formData.toString()
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.code === 200) {
+        showFormMsg('预约成功！单号：' + res.data.reservationNo, 'success');
+        loadMyReservations();
+        loadRoomSchedule();
+        loadRoomStats();
+      } else {
+        showFormMsg(res.msg, 'error');
+      }
+    })
+    .catch(function(e) {
+      showFormMsg('网络请求失败：' + e.message, 'error');
+    });
+}
+
+function showFormMsg(msg, type) {
+  var el = document.getElementById('bookingFormMsg');
+  el.style.display = 'block';
+  el.className = 'form-msg form-msg-' + type;
+  el.textContent = msg;
+}
+
+/* ---------- 预约视图选择器 ---------- */
+function loadScheduleSelects() {
+  var today = new Date().toISOString().split('T')[0];
+  var dateInput = document.getElementById('scheduleDate');
+  if (dateInput && !dateInput.value) dateInput.value = today;
+}
+
+/* ---------- 会议室今日预约时间线 ---------- */
+function loadRoomSchedule() {
+  var roomId = document.getElementById('scheduleRoomSelect').value;
+  var dateVal = document.getElementById('scheduleDate').value;
+  var container = document.getElementById('scheduleTimeline');
+
+  if (!roomId) {
+    container.innerHTML = '<div class="cal-placeholder">请选择会议室查看预约情况</div>';
+    return;
+  }
+
+  container.innerHTML = '<div class="cal-loading">加载中...</div>';
+
+  fetch('/api/meeting-reservation/room-schedule?roomId=' + roomId + '&date=' + dateVal)
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(res) {
+      if (res.code === 200) {
+        renderScheduleTimeline(res.data);
+      } else {
+        container.innerHTML = '<div class="cal-error">加载失败：' + res.msg + '</div>';
+      }
+    })
+    .catch(function(e) {
+      container.innerHTML = '<div class="cal-error">网络请求失败：' + e.message + '</div>';
+    });
+}
+
+function renderScheduleTimeline(reservations) {
+  if (reservations.length === 0) {
+    document.getElementById('scheduleTimeline').innerHTML = '<div style="text-align:center;padding:32px;color:var(--gray-400);">该会议室当日暂无预约</div>';
+    return;
+  }
+
+  var html = '<div class="tl-wrap">';
+  for (var i = 0; i < reservations.length; i++) {
+    var r = reservations[i];
+    var startTime = formatDateTime(r.startTime);
+    var endTime = formatDateTime(r.endTime);
+    html += '<div class="tl-item done">'
+      + '<div class="tl-time">' + startTime + ' — ' + endTime + '</div>'
+      + '<div class="tl-text"><strong>' + escapeHtml(r.meetingTitle) + '</strong> · 预约人ID：' + r.empId + '</div>'
+      + '</div>';
+  }
+  html += '</div>';
+  document.getElementById('scheduleTimeline').innerHTML = html;
+}
+
+/* ---------- 我的会议列表 ---------- */
+function loadMyReservations() {
+  var select = document.getElementById('myMeetingEmpSelect');
+  var empId = select ? select.value : '';
+  if (!empId) {
+    var empSelectMain = document.getElementById('empSelect');
+    if (empSelectMain) empId = empSelectMain.value;
+  }
+  if (!empId) {
+    document.getElementById('myReservationTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:30px;">请选择员工后查看会议列表</td></tr>';
+    return;
+  }
+
+  document.getElementById('myReservationTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:30px;">加载中...</td></tr>';
+
+  fetch('/api/meeting-reservation/my-list?empId=' + empId)
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(res) {
+      if (res.code === 200) {
+        renderMyReservations(res.data);
+        document.getElementById('statMyReservationCount').textContent = res.data.length;
+      } else {
+        document.getElementById('myReservationTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--danger);padding:30px;">加载失败：' + res.msg + '</td></tr>';
+      }
+    })
+    .catch(function(e) {
+      document.getElementById('myReservationTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--danger);padding:30px;">网络请求失败：' + e.message + '</td></tr>';
+    });
+}
+
+function renderMyReservations(reservations) {
+  if (reservations.length === 0) {
+    document.getElementById('myReservationTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:30px;">暂无会议预约记录</td></tr>';
+    return;
+  }
+
+  var html = '';
+  for (var i = 0; i < reservations.length; i++) {
+    var r = reservations[i];
+    var statusTag = r.status === 1 ? '<span class="tag t-green">有效</span>' : '<span class="tag t-gray">已取消</span>';
+    var cancelBtn = r.status === 1
+      ? '<button class="btn btn-danger btn-xs" onclick="cancelReservation(' + r.id + ')">取消</button>'
+      : '<span style="font-size:11px;color:var(--gray-400);">已取消</span>';
+
+    html += '<tr>'
+      + '<td>' + (r.reservationNo || '-') + '</td>'
+      + '<td>会议室' + r.roomId + '</td>'
+      + '<td>' + escapeHtml(r.meetingTitle) + '</td>'
+      + '<td>' + formatDateTime(r.startTime) + '</td>'
+      + '<td>' + formatDateTime(r.endTime) + '</td>'
+      + '<td>' + statusTag + '</td>'
+      + '<td class="txt-center">' + cancelBtn + '</td>'
+      + '</tr>';
+  }
+  document.getElementById('myReservationTableBody').innerHTML = html;
+}
+
+/* ---------- 取消预约 ---------- */
+function cancelReservation(id) {
+  if (!confirm('确认要取消此预约吗？')) return;
+
+  var formData = new URLSearchParams();
+  formData.append('id', id);
+
+  fetch('/api/meeting-reservation/cancel', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: formData.toString()
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.code === 200) {
+        loadMyReservations();
+        loadRoomSchedule();
+        loadRoomStats();
+      } else {
+        alert(res.msg);
+      }
+    })
+    .catch(function(e) {
+      alert('网络请求失败：' + e.message);
+    });
+}
+
+/* ---------- 统计刷新 ---------- */
+function loadRoomStats() {
+  var today = new Date().toISOString().split('T')[0];
+  var roomId = document.getElementById('scheduleRoomSelect').value;
+  if (roomId) {
+    fetch('/api/meeting-reservation/room-schedule?roomId=' + roomId + '&date=' + today)
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (res.code === 200) {
+          document.getElementById('statTodayReservationCount').textContent = res.data.length;
+          var upcoming = 0;
+          var now = new Date();
+          for (var i = 0; i < res.data.length; i++) {
+            if (new Date(res.data[i].startTime) > now) upcoming++;
+          }
+          document.getElementById('statUpcomingCount').textContent = upcoming;
+        }
+      })
+      .catch(function() {});
+  }
+}
+
+/* ---------- 工具函数 ---------- */
+function formatDateTime(dtStr) {
+  if (!dtStr) return '-';
+  var dt = dtStr.replace('T', ' ').substring(0, 16);
+  return dt;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  var div = document.createElement('div');
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
+}
+

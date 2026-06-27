@@ -42,6 +42,9 @@
       <div class="nav-item" onclick="switchTab(4,this)">
         <span class="nav-icon">🔔</span>通知中心
       </div>
+      <div class="nav-item" onclick="switchTab(5,this)">
+        <span class="nav-icon">🏢</span>会议预约
+      </div>
     </div>
     <div class="sidebar-footer">
       <span class="dot"></span> 系统运行中 · v1.0
@@ -367,6 +370,130 @@
             </div>
             <div class="notice-time">昨天</div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 面板5：会议预约 ==================== -->
+    <div class="panel" id="panel5">
+      <div class="page-header">
+        <div class="page-title"><span class="icon">🏢</span>会议室预约管理</div>
+      </div>
+
+      <!-- 统计卡片 -->
+      <div class="stats-row">
+        <div class="stat-card blue">
+          <div class="stat-icon blue">🏢</div>
+          <div><div class="stat-num" id="statRoomCount">0</div><div class="stat-lbl">可用会议室</div></div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon green">📋</div>
+          <div><div class="stat-num" id="statMyReservationCount">0</div><div class="stat-lbl">我的预约</div></div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-icon orange">📅</div>
+          <div><div class="stat-num" id="statTodayReservationCount">0</div><div class="stat-lbl">今日预约</div></div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-icon red">⏰</div>
+          <div><div class="stat-num" id="statUpcomingCount">0</div><div class="stat-lbl">即将开始</div></div>
+        </div>
+      </div>
+
+      <!-- 会议室列表 + 预约表单 双栏布局 -->
+      <div class="meeting-row">
+        <!-- 左栏：会议室列表 -->
+        <div class="card meeting-left">
+          <div class="card-hd"><h3>可用会议室</h3><span id="meetingRoomCountHint" style="font-size:12px;color:var(--gray-400);">加载中...</span></div>
+          <div class="card-bd zero" id="meetingRoomList">
+            <div class="cal-loading">加载中...</div>
+          </div>
+        </div>
+
+        <!-- 右栏：预约表单 -->
+        <div class="card meeting-right">
+          <div class="card-hd"><h3>预约会议</h3></div>
+          <div class="card-bd">
+            <div id="bookingFormMsg" style="display:none;"></div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="bookingRoomSelect">选择会议室</label>
+                <select id="bookingRoomSelect" class="form-control">
+                  <option value="">加载中...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="bookingEmpSelect">预约人</label>
+                <select id="bookingEmpSelect" class="form-control">
+                  <option value="">加载中...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="bookingDate">预约日期</label>
+                <input type="date" id="bookingDate" class="form-control">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="bookingStartTime">开始时间</label>
+                  <input type="time" id="bookingStartTime" class="form-control" step="1800">
+                </div>
+                <div class="form-group">
+                  <label for="bookingEndTime">结束时间</label>
+                  <input type="time" id="bookingEndTime" class="form-control" step="1800">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="bookingTitle">会议主题</label>
+                <input type="text" id="bookingTitle" class="form-control" placeholder="请输入会议主题" maxlength="100">
+              </div>
+              <div class="form-group">
+                <label for="bookingDesc">会议说明（选填）</label>
+                <textarea id="bookingDesc" class="form-control" rows="3" placeholder="请输入会议说明" maxlength="500"></textarea>
+              </div>
+              <div class="form-group">
+                <button class="btn btn-primary" onclick="submitReservation()" style="width:100%;padding:10px;">提交预约</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 会议室今日时间线 -->
+      <div class="card">
+        <div class="card-hd">
+          <h3>会议室今日预约视图</h3>
+          <div class="cal-emp-select">
+            <label for="scheduleRoomSelect">选择会议室：</label>
+            <select id="scheduleRoomSelect" onchange="loadRoomSchedule()">
+              <option value="">加载中...</option>
+            </select>
+            <label for="scheduleDate" style="margin-left:12px;">日期：</label>
+            <input type="date" id="scheduleDate" class="form-control form-control-sm" onchange="loadRoomSchedule()" style="width:auto;">
+          </div>
+        </div>
+        <div class="card-bd" id="scheduleTimeline">
+          <div class="cal-placeholder">请选择会议室查看预约情况</div>
+        </div>
+      </div>
+
+      <!-- 我的会议列表 -->
+      <div class="card">
+        <div class="card-hd">
+          <h3>我的会议列表</h3>
+          <div class="cal-emp-select">
+            <label for="myMeetingEmpSelect">查看员工：</label>
+            <select id="myMeetingEmpSelect" onchange="loadMyReservations()">
+              <option value="">加载中...</option>
+            </select>
+          </div>
+        </div>
+        <div class="card-bd zero">
+          <table>
+            <thead><tr><th>预约单号</th><th>会议室</th><th>主题</th><th>开始时间</th><th>结束时间</th><th>状态</th><th class="txt-center">操作</th></tr></thead>
+            <tbody id="myReservationTableBody">
+              <tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:30px;">请选择员工后查看会议列表</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
