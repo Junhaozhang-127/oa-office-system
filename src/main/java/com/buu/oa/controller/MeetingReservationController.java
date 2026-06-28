@@ -2,6 +2,7 @@ package com.buu.oa.controller;
 
 import com.buu.oa.common.R;
 import com.buu.oa.entity.MeetingReservation;
+import com.buu.oa.security.SecurityUtils;
 import com.buu.oa.service.MeetingReservationService;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,7 +13,7 @@ import java.util.Map;
 
 /**
  * 会议预约Controller
- * 提供会议预约的核心接口，含冲突检测
+ * 提供会议预约的核心接口，含冲突检测，empId从Token获取
  */
 @RestController
 @RequestMapping("/api/meeting-reservation")
@@ -27,7 +28,7 @@ public class MeetingReservationController {
     /**
      * 创建会议预约（含冲突检测）
      * @param roomId      会议室ID
-     * @param empId       预约人ID
+     * @param empId       预约人ID（前端兼容保留，实际从Token获取）
      * @param meetingTitle 会议主题
      * @param startTime   开始时间
      * @param endTime     结束时间
@@ -42,6 +43,10 @@ public class MeetingReservationController {
                                          @RequestParam String endTime,
                                          @RequestParam(required = false, defaultValue = "") String description) {
         try {
+            Long currentEmpId = SecurityUtils.getCurrentEmployeeId();
+            if (currentEmpId != null) {
+                empId = currentEmpId;
+            }
             LocalDateTime start = LocalDateTime.parse(startTime);
             LocalDateTime end = LocalDateTime.parse(endTime);
             MeetingReservation reservation = meetingReservationService.createReservation(
@@ -54,11 +59,15 @@ public class MeetingReservationController {
 
     /**
      * 查询我的会议列表
-     * @param empId 员工ID
+     * @param empId 员工ID（前端兼容保留，实际从Token获取）
      * @return 预约记录列表
      */
     @GetMapping("/my-list")
     public R<List<MeetingReservation>> myList(@RequestParam Long empId) {
+        Long currentEmpId = SecurityUtils.getCurrentEmployeeId();
+        if (currentEmpId != null) {
+            empId = currentEmpId;
+        }
         List<MeetingReservation> reservations = meetingReservationService.getMyReservations(empId);
         return R.success(reservations);
     }

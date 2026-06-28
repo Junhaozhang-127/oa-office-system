@@ -4,8 +4,47 @@
 var currentYear  = new Date().getFullYear();
 var currentMonth = new Date().getMonth() + 1;
 
+/* ---------- 权限判断工具（第八天RBAC） ---------- */
+/**
+ * 检查当前用户是否拥有指定权限编码
+ * @param {string} permCode 权限编码
+ * @returns {boolean}
+ */
+function hasPerm(permCode) {
+  if (typeof Auth !== 'undefined') return Auth.hasPermission(permCode);
+  return true; // fallback: 未加载auth.js时默认通过
+}
+
+/**
+ * 获取当前登录用户的empId
+ * @returns {number|null}
+ */
+function getCurrentEmpId() {
+  if (typeof Auth !== 'undefined') {
+    var user = Auth.getUser();
+    if (user && user.empId) return user.empId;
+  }
+  return null;
+}
+
 /* ---------- 面板切换 ---------- */
 function switchTab(n, el) {
+  // 权限检查：公告管理面板仅管理员和HR可访问
+  if (n === 11 && !Auth.canAccessMenu('公告管理')) {
+    alert('权限不足，无法访问公告管理');
+    return;
+  }
+  // 数据看板权限检查
+  if (n === 2 && !Auth.canAccessMenu('数据看板')) {
+    alert('权限不足，无法访问数据看板');
+    return;
+  }
+  // 审批流权限检查
+  if (n === 3 && !Auth.canAccessMenu('审批流')) {
+    alert('权限不足，无法访问审批流');
+    return;
+  }
+
   // 离开数据看板时销毁图表
   if (n !== 2) disposeAllCharts();
 
@@ -518,14 +557,17 @@ function renderScheduleTimeline(reservations) {
 
 /* ---------- 我的会议列表 ---------- */
 function loadMyReservations() {
-  var select = document.getElementById('myMeetingEmpSelect');
-  var empId = select ? select.value : '';
+  var empId = getCurrentEmpId();
+  if (!empId) {
+    var select = document.getElementById('myMeetingEmpSelect');
+    empId = select ? select.value : '';
+  }
   if (!empId) {
     var empSelectMain = document.getElementById('empSelect');
     if (empSelectMain) empId = empSelectMain.value;
   }
   if (!empId) {
-    document.getElementById('myReservationTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:30px;">请选择员工后查看会议列表</td></tr>';
+    document.getElementById('myReservationTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:30px;">请先登录后查看会议列表</td></tr>';
     return;
   }
 
@@ -1984,6 +2026,10 @@ function getNoticeStatusTag(status) {
 var editingNoticeId = null;
 
 function showAnnounceCreate() {
+  if (!hasPerm('announcement:publish') && !hasPerm('announcement:manage')) {
+    alert('权限不足，无法创建公告');
+    return;
+  }
   editingNoticeId = null;
   document.getElementById('announceFormTitle').textContent = '新建公告';
   document.getElementById('announceTitle').value = '';
@@ -2100,6 +2146,10 @@ function submitAnnounceForm() {
 }
 
 function publishAnnounce(id) {
+  if (!hasPerm('announcement:publish') && !hasPerm('announcement:manage')) {
+    alert('权限不足');
+    return;
+  }
   if (!confirm('确认发布此公告？发布后将通知所有用户。')) return;
   fetch('/api/notices/' + id + '/publish', { method: 'POST' })
     .then(function(r) { return r.json(); })
@@ -2116,6 +2166,10 @@ function publishAnnounce(id) {
 }
 
 function withdrawAnnounce(id) {
+  if (!hasPerm('announcement:publish') && !hasPerm('announcement:manage')) {
+    alert('权限不足');
+    return;
+  }
   if (!confirm('确认撤回此公告？')) return;
   fetch('/api/notices/' + id + '/withdraw', { method: 'POST' })
     .then(function(r) { return r.json(); })

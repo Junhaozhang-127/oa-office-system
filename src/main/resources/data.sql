@@ -34,11 +34,11 @@ INSERT INTO sys_menu (id, parent_id, menu_name, path, component, perms, type, ic
 -- 4. 用户表数据（密码：123456）
 -- =============================================
 INSERT INTO sys_user (id, username, password, emp_id, status) VALUES
-(1, 'admin', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', 1, 1),
-(2, 'zhangsan', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', 1, 1),
-(3, 'lisi', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', 2, 1),
-(4, 'zhaoliu', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', 4, 1),
-(5, 'sunqi', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', 5, 1);
+(1, 'admin', '$2a$10$UPf6a5dsntfvvpeL5wSFr.bAHcgOcjTk0Xb4vPcDkwTXs.e4Xf6eK', 1, 1),
+(2, 'zhangsan', '$2a$10$UPf6a5dsntfvvpeL5wSFr.bAHcgOcjTk0Xb4vPcDkwTXs.e4Xf6eK', 1, 1),
+(3, 'lisi', '$2a$10$UPf6a5dsntfvvpeL5wSFr.bAHcgOcjTk0Xb4vPcDkwTXs.e4Xf6eK', 2, 1),
+(4, 'zhaoliu', '$2a$10$UPf6a5dsntfvvpeL5wSFr.bAHcgOcjTk0Xb4vPcDkwTXs.e4Xf6eK', 4, 1),
+(5, 'sunqi', '$2a$10$UPf6a5dsntfvvpeL5wSFr.bAHcgOcjTk0Xb4vPcDkwTXs.e4Xf6eK', 5, 1);
 
 -- =============================================
 -- 5. 用户角色关联表数据
@@ -223,3 +223,88 @@ INSERT INTO oa_notification (id, receiver_id, business_type, business_id, title,
 (3, 1, 'ANNOUNCEMENT', 1, '公告：端午节放假通知', '2026年端午节放假时间为6月22日-24日，共3天', 'READ', '2026-05-18 17:00:00'),
 (4, 2, 'APPROVAL', 3, '审批待办提醒', '请假单 QJ202605003 待您审批', 'UNREAD', '2026-05-18 14:00:00'),
 (5, 3, 'ANNOUNCEMENT', 1, '公告：端午节放假通知', '2026年端午节放假时间为6月22日-24日，共3天', 'UNREAD', '2026-05-18 17:00:00');
+
+-- =============================================
+-- 20. RBAC按钮权限（第八天新增）
+-- =============================================
+-- type=2为按钮权限，perms为权限编码，用于@PreAuthorize和前端v-permission
+INSERT INTO sys_menu (id, parent_id, menu_name, path, component, perms, type, icon, sort) VALUES
+-- 员工档案
+(8,  0, '员工列表',   '', '', 'employee:list',   2, '', 8),
+(9,  0, '员工新增',   '', '', 'employee:add',    2, '', 9),
+(10, 0, '员工编辑',   '', '', 'employee:update', 2, '', 10),
+(11, 0, '员工删除',   '', '', 'employee:delete', 2, '', 11),
+-- 考勤
+(12, 0, '考勤查看',   '', '', 'attendance:list',  2, '', 12),
+-- 请假
+(13, 0, '请假列表',   '', '', 'leave:list',       2, '', 13),
+(14, 0, '请假申请',   '', '', 'leave:add',         2, '', 14),
+(15, 0, '请假审批',   '', '', 'leave:approve',     2, '', 15),
+-- 加班
+(16, 0, '加班列表',   '', '', 'overtime:list',     2, '', 16),
+(17, 0, '加班申请',   '', '', 'overtime:add',      2, '', 17),
+(18, 0, '加班审批',   '', '', 'overtime:approve',  2, '', 18),
+-- 会议
+(19, 0, '会议列表',   '', '', 'meeting:list',      2, '', 19),
+(20, 0, '会议预约',   '', '', 'meeting:add',       2, '', 20),
+(21, 0, '会议取消',   '', '', 'meeting:cancel',    2, '', 21),
+-- 报销
+(22, 0, '报销列表',   '', '', 'reimbursement:list',   2, '', 22),
+(23, 0, '报销申请',   '', '', 'reimbursement:add',    2, '', 23),
+(24, 0, '报销审批',   '', '', 'reimbursement:approve',2, '', 24),
+-- 公告
+(25, 0, '公告发布',   '', '', 'announcement:publish', 2, '', 25),
+(26, 0, '公告管理',   '', '', 'announcement:manage',  2, '', 26),
+-- 通知
+(27, 0, '通知查看',   '', '', 'notification:list',   2, '', 27),
+-- 数据看板（第九天预留）
+(28, 0, '数据看板',   '', '', 'dashboard:view',      2, '', 28),
+-- 报表导出（第九天预留）
+(29, 0, '报表导出',   '', '', 'report:export',        2, '', 29);
+
+-- 按钮权限分配 - 管理员拥有全部按钮
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT 1, id FROM sys_menu WHERE type = 2;
+
+-- 普通员工(2)：查看员工列表、考勤、请假申请/列表、加班申请/列表、会议列表/预约、公告列表、通知
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(2, 8), (2, 12), (2, 13), (2, 14), (2, 16), (2, 17), (2, 19), (2, 20), (2, 27);
+
+-- 部门经理(3)：员工列表、考勤、请假全部、加班全部、会议、报销列表、公告、通知、审批
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(3, 8), (3, 12), (3, 13), (3, 14), (3, 15), (3, 16), (3, 17), (3, 18),
+(3, 19), (3, 20), (3, 22), (3, 25), (3, 27);
+
+-- HR(4)：员工全部、考勤、请假列表、加班列表、公告管理、通知、数据看板
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(4, 8), (4, 9), (4, 10), (4, 11), (4, 12), (4, 13), (4, 16),
+(4, 25), (4, 26), (4, 27), (4, 28);
+
+-- 财务(5)：报销全部、公告列表、通知、报表导出
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(5, 22), (5, 23), (5, 24), (5, 25), (5, 27), (5, 29);
+
+-- =============================================
+-- 21. 补充前端面板菜单项（第八天RBAC，将索引面板映射到菜单）
+-- =============================================
+-- 会议预约、请假申请、加班申请、我的申请面板此前未在sys_menu中注册
+INSERT INTO sys_menu (id, parent_id, menu_name, path, component, perms, type, icon, sort) VALUES
+(30, 0, '会议预约', '/meeting', 'meeting/booking', '', 1, 'Office', 10),
+(31, 0, '请假申请', '/leave', 'leave/apply', '', 1, 'Document', 11),
+(32, 0, '加班申请', '/overtime', 'overtime/apply', '', 1, 'Clock', 12),
+(33, 0, '我的申请', '/my-applications', 'applications/list', '', 1, 'List', 13);
+
+-- 管理员拥有全部新增菜单
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES (1, 30), (1, 31), (1, 32), (1, 33);
+
+-- 普通员工可访问会议、请假、加班、我的申请
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES (2, 30), (2, 31), (2, 32), (2, 33);
+
+-- 部门经理可访问全部
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES (3, 30), (3, 31), (3, 32), (3, 33);
+
+-- HR可访问会议、请假、加班
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES (4, 30), (4, 31), (4, 32);
+
+-- 财务可访问会议、我的申请
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES (5, 30), (5, 33);

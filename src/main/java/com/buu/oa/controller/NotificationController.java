@@ -1,7 +1,7 @@
 package com.buu.oa.controller;
 
-import com.buu.oa.common.CurrentUserHelper;
 import com.buu.oa.common.R;
+import com.buu.oa.security.SecurityUtils;
 import com.buu.oa.service.NotificationService;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,7 +38,7 @@ public class NotificationController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String businessType,
             @RequestParam(required = false) String status) {
-        if (receiverId == null) receiverId = CurrentUserHelper.getCurrentUserId();
+        if (receiverId == null) receiverId = SecurityUtils.getCurrentUserId();
         Map<String, Object> data = notificationService.getMyNotifications(
                 receiverId, page, size, businessType, status);
         return R.success(data);
@@ -51,7 +51,7 @@ public class NotificationController {
      */
     @GetMapping("/unread-count")
     public R<Integer> unreadCount(@RequestParam(required = false) Long receiverId) {
-        if (receiverId == null) receiverId = CurrentUserHelper.getCurrentUserId();
+        if (receiverId == null) receiverId = SecurityUtils.getCurrentUserId();
         int count = notificationService.getUnreadCount(receiverId);
         return R.success(count);
     }
@@ -87,7 +87,7 @@ public class NotificationController {
      */
     @PostMapping("/read-all")
     public R<Void> markAllRead(@RequestParam(required = false) Long receiverId) {
-        if (receiverId == null) receiverId = CurrentUserHelper.getCurrentUserId();
+        if (receiverId == null) receiverId = SecurityUtils.getCurrentUserId();
         notificationService.markAllRead(receiverId);
         return R.success();
     }

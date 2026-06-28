@@ -1,7 +1,7 @@
 package com.buu.oa.controller;
 
-import com.buu.oa.common.CurrentUserHelper;
 import com.buu.oa.common.R;
+import com.buu.oa.security.SecurityUtils;
 import com.buu.oa.entity.Notice;
 import com.buu.oa.service.NoticeService;
 import org.springframework.web.bind.annotation.*;
@@ -33,7 +33,7 @@ public class NoticeController {
     public R<Map<String, Object>> create(@RequestBody Map<String, Object> params) {
         try {
             if (params.get("publisherId") == null) {
-                params.put("publisherId", CurrentUserHelper.getCurrentUserId());
+                params.put("publisherId", SecurityUtils.getCurrentUserId());
             }
             Map<String, Object> data = noticeService.createNotice(params);
             return R.success(data);
@@ -142,7 +142,7 @@ public class NoticeController {
     public R<Void> markRead(@PathVariable Long id, @RequestBody Map<String, Object> params) {
         try {
             Long userId = getLongParam(params, "userId");
-            if (userId == null) userId = CurrentUserHelper.getCurrentUserId();
+            if (userId == null) userId = SecurityUtils.getCurrentUserId();
             noticeService.markRead(id, userId);
             return R.success();
         } catch (IllegalArgumentException e) {
@@ -157,7 +157,7 @@ public class NoticeController {
      */
     @GetMapping("/unread-count")
     public R<Integer> unreadCount(@RequestParam(required = false) Long userId) {
-        if (userId == null) userId = CurrentUserHelper.getCurrentUserId();
+        if (userId == null) userId = SecurityUtils.getCurrentUserId();
         int count = noticeService.getUnreadCount(userId);
         return R.success(count);
     }
@@ -169,7 +169,7 @@ public class NoticeController {
     @PostMapping("/read-status")
     public R<Set<Long>> readStatus(@RequestBody Map<String, Object> params) {
         Long userId = getLongParam(params, "userId");
-        if (userId == null) userId = CurrentUserHelper.getCurrentUserId();
+        if (userId == null) userId = SecurityUtils.getCurrentUserId();
         @SuppressWarnings("unchecked")
         List<Long> noticeIds = (List<Long>) params.get("noticeIds");
         if (noticeIds == null) {

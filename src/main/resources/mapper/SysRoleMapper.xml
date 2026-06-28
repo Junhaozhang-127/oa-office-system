@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.buu.oa.mapper.SysRoleMapper">
+
+    <!-- 根据用户ID查询角色列表，联查sys_user_role -->
+    <select id="selectByUserId" resultType="com.buu.oa.entity.SysRole">
+        SELECT r.id, r.role_name, r.role_code, r.description, r.status, r.create_time, r.update_time
+        FROM sys_role r
+        INNER JOIN sys_user_role ur ON r.id = ur.role_id
+        WHERE ur.user_id = #{userId} AND r.status = 1
+    </select>
+
+</mapper>
