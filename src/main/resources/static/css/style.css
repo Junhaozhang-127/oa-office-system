@@ -580,6 +580,27 @@ tbody tr:last-child td { border-bottom: none; }
 .notice-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); flex-shrink: 0; }
 .notice-meta { font-size: 12.5px; color: var(--gray-500); margin-top: 3px; line-height: 1.5; }
 .notice-time { font-size: 11.5px; color: var(--gray-400); white-space: nowrap; flex-shrink: 0; font-weight: 500; }
+.notice-item.unread { background: var(--brand-50); }
+.notice-item.unread:hover { background: var(--brand-100); }
+
+/* ============================================================
+ * NAV BADGE (未读消息红点)
+ * ============================================================ */
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  background: var(--danger);
+  color: #fff;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: auto;
+  padding: 0 5px;
+  line-height: 1;
+}
 
 /* ============================================================
  * INFO GRID (员工详情页)

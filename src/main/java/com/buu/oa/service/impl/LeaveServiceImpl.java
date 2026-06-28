@@ -5,6 +5,9 @@ import com.buu.oa.enums.LeaveType;
 import com.buu.oa.enums.ProcessStatus;
 import com.buu.oa.mapper.LeaveApplicationMapper;
 import com.buu.oa.service.LeaveService;
+import com.buu.oa.service.NotificationService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -18,15 +21,20 @@ import java.util.Map;
 
 /**
  * 请假申请Service实现
- * 包含参数校验、天数自动计算、单号生成、状态置为PENDING
+ * 包含参数校验、天数自动计算、单号生成、状态置为PENDING、审批通知（第七天集成）
  */
 @Service
 public class LeaveServiceImpl implements LeaveService {
 
-    private final LeaveApplicationMapper leaveApplicationMapper;
+    private static final Logger log = LoggerFactory.getLogger(LeaveServiceImpl.class);
 
-    public LeaveServiceImpl(LeaveApplicationMapper leaveApplicationMapper) {
+    private final LeaveApplicationMapper leaveApplicationMapper;
+    private final NotificationService notificationService;
+
+    public LeaveServiceImpl(LeaveApplicationMapper leaveApplicationMapper,
+                            NotificationService notificationService) {
         this.leaveApplicationMapper = leaveApplicationMapper;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -87,6 +95,19 @@ public class LeaveServiceImpl implements LeaveService {
         entity.setUpdateTime(LocalDateTime.now());
 
         leaveApplicationMapper.insert(entity);
+
+        // 请假提交后通知审批人（第七天集成）
+        // TODO: 第八天RBAC接入后，根据部门/角色查询实际审批人替换此硬编码
+        try {
+            Long approverId = 3L; // 临时：默认通知部门经理（user_id=3，sys_user中lisi为经理角色）
+            String title = "请假审批待办";
+            String content = leaveType.getLabel() + "申请（单号：" + leaveNo + "），申请人ID：" + empId
+                    + "，日期：" + startDate + "至" + endDate + "，共" + days + "天。";
+            notificationService.createNotification("LEAVE", entity.getId(), approverId, title, content);
+            log.info("请假审批通知已发送，单号={}，审批人ID={}", leaveNo, approverId);
+        } catch (Exception e) {
+            log.warn("发送请假审批通知失败（非阻塞），单号={}，错误={}", leaveNo, e.getMessage());
+        }
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", entity.getId());

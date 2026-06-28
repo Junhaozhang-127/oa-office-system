@@ -4,7 +4,10 @@ import com.buu.oa.entity.OvertimeApplication;
 import com.buu.oa.enums.OvertimeType;
 import com.buu.oa.enums.ProcessStatus;
 import com.buu.oa.mapper.OvertimeApplicationMapper;
+import com.buu.oa.service.NotificationService;
 import com.buu.oa.service.OvertimeService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -17,15 +20,20 @@ import java.util.Map;
 
 /**
  * 加班申请Service实现
- * 包含参数校验、小时数自动计算、单号生成、状态置为PENDING
+ * 包含参数校验、小时数自动计算、单号生成、状态置为PENDING、审批通知（第七天集成）
  */
 @Service
 public class OvertimeServiceImpl implements OvertimeService {
 
-    private final OvertimeApplicationMapper overtimeApplicationMapper;
+    private static final Logger log = LoggerFactory.getLogger(OvertimeServiceImpl.class);
 
-    public OvertimeServiceImpl(OvertimeApplicationMapper overtimeApplicationMapper) {
+    private final OvertimeApplicationMapper overtimeApplicationMapper;
+    private final NotificationService notificationService;
+
+    public OvertimeServiceImpl(OvertimeApplicationMapper overtimeApplicationMapper,
+                               NotificationService notificationService) {
         this.overtimeApplicationMapper = overtimeApplicationMapper;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -86,6 +94,19 @@ public class OvertimeServiceImpl implements OvertimeService {
         entity.setUpdateTime(LocalDateTime.now());
 
         overtimeApplicationMapper.insert(entity);
+
+        // 加班提交后通知审批人（第七天集成）
+        // TODO: 第八天RBAC接入后，根据部门/角色查询实际审批人替换此硬编码
+        try {
+            Long approverId = 3L;
+            String title = "加班审批待办";
+            String content = overtimeType.getLabel() + "申请（单号：" + overtimeNo + "），申请人ID：" + empId
+                    + "，时间：" + startTime + "至" + endTime + "，共" + hours + "小时。";
+            notificationService.createNotification("OVERTIME", entity.getId(), approverId, title, content);
+            log.info("加班审批通知已发送，单号={}，审批人ID={}", overtimeNo, approverId);
+        } catch (Exception e) {
+            log.warn("发送加班审批通知失败（非阻塞），单号={}，错误={}", overtimeNo, e.getMessage());
+        }
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", entity.getId());

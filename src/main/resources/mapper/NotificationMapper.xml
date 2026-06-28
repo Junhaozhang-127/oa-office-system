@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.buu.oa.mapper.NotificationMapper">
+
+    <!-- 分页查询用户通知列表，按创建时间倒序 -->
+    <select id="selectMyNotifications" resultType="com.buu.oa.entity.Notification">
+        SELECT id, receiver_id, sender_id, business_type, business_id,
+               title, content, status, remind_time, read_time,
+               create_time, update_time
+        FROM oa_notification
+        WHERE receiver_id = #{receiverId}
+        <if test="businessType != null and businessType != ''">
+            AND business_type = #{businessType}
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <!-- 统计用户通知总数 -->
+    <select id="countMyNotifications" resultType="int">
+        SELECT COUNT(*)
+        FROM oa_notification
+        WHERE receiver_id = #{receiverId}
+        <if test="businessType != null and businessType != ''">
+            AND business_type = #{businessType}
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+    </select>
+
+    <!-- 查询用户未读消息数量 -->
+    <select id="countUnread" resultType="int">
+        SELECT COUNT(*)
+        FROM oa_notification
+        WHERE receiver_id = #{receiverId}
+          AND status = 'UNREAD'
+    </select>
+
+    <!-- 按业务类型统计未读数 -->
+    <select id="countUnreadByBusinessType" resultType="java.util.HashMap">
+        SELECT business_type AS businessType, COUNT(*) AS count
+        FROM oa_notification
+        WHERE receiver_id = #{receiverId}
+          AND status = 'UNREAD'
+        GROUP BY business_type
+    </select>
+
+    <!-- 批量标记已读 -->
+    <update id="batchMarkRead">
+        UPDATE oa_notification
+        SET status = 'READ', read_time = NOW()
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <!-- 全部标记已读 -->
+    <update id="markAllRead">
+        UPDATE oa_notification
+        SET status = 'READ', read_time = NOW()
+        WHERE receiver_id = #{receiverId}
+          AND status = 'UNREAD'
+    </update>
+
+    <!-- 检查同业务是否已有通知（防重复） -->
+    <select id="countByBusiness" resultType="int">
+        SELECT COUNT(*)
+        FROM oa_notification
+        WHERE business_type = #{businessType}
+          AND business_id = #{businessId}
+          AND receiver_id = #{receiverId}
+    </select>
+
+</mapper>

@@ -186,3 +186,40 @@ INSERT INTO sys_role_menu (role_id, menu_id) VALUES
 
 INSERT INTO sys_role_menu (role_id, menu_id) VALUES
 (5, 1), (5, 3), (5, 4), (5, 5);
+
+-- =============================================
+-- 18. 补充公告菜单权限（第七天新增）
+-- =============================================
+INSERT INTO sys_menu (id, parent_id, menu_name, path, component, perms, type, icon, sort) VALUES
+(6, 0, '公告列表', '/announcement-list', 'announcement/list', '', 1, 'Notification', 6),
+(7, 0, '公告管理', '/announcement-manage', 'announcement/manage', '', 1, 'EditPen', 7);
+
+-- 超级管理员拥有公告菜单权限
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(1, 6), (1, 7);
+
+-- 普通员工可查看公告
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(2, 6);
+
+-- 部门经理可查看公告
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(3, 6);
+
+-- HR管理员可管理公告
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(4, 6), (4, 7);
+
+-- 财务管理员可查看公告
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(5, 6);
+
+-- =============================================
+-- 19. 消息通知表数据（第七天新增）
+-- =============================================
+INSERT INTO oa_notification (id, receiver_id, business_type, business_id, title, content, status, create_time) VALUES
+(1, 1, 'APPROVAL', 1, '审批待办提醒', '报销单 BX20250518002 待您审批', 'UNREAD', '2026-05-19 10:00:00'),
+(2, 1, 'MEETING', 3, '会议提醒', '客户洽谈会将于今天15:00开始，请准时参加', 'UNREAD', '2026-05-19 14:45:00'),
+(3, 1, 'ANNOUNCEMENT', 1, '公告：端午节放假通知', '2026年端午节放假时间为6月22日-24日，共3天', 'READ', '2026-05-18 17:00:00'),
+(4, 2, 'APPROVAL', 3, '审批待办提醒', '请假单 QJ202605003 待您审批', 'UNREAD', '2026-05-18 14:00:00'),
+(5, 3, 'ANNOUNCEMENT', 1, '公告：端午节放假通知', '2026年端午节放假时间为6月22日-24日，共3天', 'UNREAD', '2026-05-18 17:00:00');
