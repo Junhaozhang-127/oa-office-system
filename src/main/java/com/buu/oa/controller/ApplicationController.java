@@ -1,6 +1,7 @@
 package com.buu.oa.controller;
 
 import com.buu.oa.common.R;
+import com.buu.oa.security.SecurityUtils;
 import com.buu.oa.service.ApplicationService;
 import org.springframework.web.bind.annotation.*;
 
@@ -8,7 +9,7 @@ import java.util.Map;
 
 /**
  * 我的申请Controller
- * 统一查询请假和加班申请列表
+ * 统一查询请假和加班申请列表，empId从Token获取
  */
 @RestController
 @RequestMapping("/api/applications")
@@ -22,11 +23,15 @@ public class ApplicationController {
 
     /**
      * 查询我的申请列表（请假+加班）
-     * @param empId 员工ID
+     * @param empId 员工ID（前端兼容保留，实际从Token获取）
      * @return 统一申请列表，按创建时间倒序
      */
     @GetMapping("/my")
     public R<Map<String, Object>> getMyApplications(@RequestParam Long empId) {
+        Long currentEmpId = SecurityUtils.getCurrentEmployeeId();
+        if (currentEmpId != null) {
+            empId = currentEmpId;
+        }
         Map<String, Object> data = applicationService.getMyApplications(empId);
         return R.success(data);
     }

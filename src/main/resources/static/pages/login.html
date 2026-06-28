@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 - OA协同办公平台</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .login-wrapper {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
+  }
+  .login-card {
+    width: 400px;
+    background: #fff;
+    border-radius: 12px;
+    padding: 40px 36px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .login-logo {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .login-logo .logo-icon {
+    width: 56px; height: 56px;
+    background: var(--brand-600, #2563eb);
+    color: #fff;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .login-logo h1 {
+    font-size: 22px;
+    color: var(--gray-800, #1e293b);
+    margin: 0;
+    font-weight: 600;
+  }
+  .login-logo p {
+    font-size: 13px;
+    color: var(--gray-400, #94a3b8);
+    margin: 4px 0 0;
+  }
+  .form-group {
+    margin-bottom: 18px;
+  }
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-700, #475569);
+    margin-bottom: 6px;
+  }
+  .form-group input {
+    width: 100%;
+    height: 42px;
+    padding: 0 14px;
+    border: 1px solid var(--gray-200, #cbd5e1);
+    border-radius: var(--radius, 8px);
+    font-size: 14px;
+    color: var(--gray-800, #1e293b);
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus {
+    outline: none;
+    border-color: var(--brand-500, #3b82f6);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+  }
+  .login-error {
+    background: #fef2f2;
+    color: #dc2626;
+    font-size: 13px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .login-error.show { display: block; }
+  .login-btn {
+    width: 100%;
+    height: 44px;
+    background: var(--brand-600, #2563eb);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .login-btn:hover { background: var(--brand-700, #1d4ed8); }
+  .login-btn:disabled {
+    background: var(--gray-300, #cbd5e1);
+    cursor: not-allowed;
+  }
+  .login-tip {
+    text-align: center;
+    font-size: 12px;
+    color: var(--gray-400, #94a3b8);
+    margin-top: 20px;
+  }
+  .login-tip code {
+    background: var(--gray-100, #f1f5f9);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<div class="login-wrapper">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon">OA</div>
+      <h1>OA协同办公平台</h1>
+      <p>请使用系统账号登录</p>
+    </div>
+
+    <div class="login-error" id="loginError"></div>
+
+    <form id="loginForm" onsubmit="return handleLogin(event)">
+      <div class="form-group">
+        <label for="username">用户名</label>
+        <input type="text" id="username" placeholder="请输入用户名" autocomplete="username" autofocus>
+      </div>
+      <div class="form-group">
+        <label for="password">密码</label>
+        <input type="password" id="password" placeholder="请输入密码" autocomplete="current-password">
+      </div>
+      <button type="submit" class="login-btn" id="loginBtn">登 录</button>
+    </form>
+
+    <div class="login-tip">
+      演示账号：<code>admin</code> / <code>zhangsan</code> / <code>lisi</code> / <code>zhaoliu</code> / <code>sunqi</code> &nbsp;|&nbsp; 密码：<code>123456</code>
+    </div>
+  </div>
+</div>
+
+<script src="../js/auth.js"></script>
+<script>
+(function() {
+  // 已登录则直接跳转工作台
+  if (Auth.isLoggedIn()) {
+    window.location.href = '../index.html';
+    return;
+  }
+
+  var errorEl = document.getElementById('loginError');
+  var btnEl = document.getElementById('loginBtn');
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.classList.add('show');
+  }
+
+  function hideError() {
+    errorEl.classList.remove('show');
+  }
+
+  window.handleLogin = function(e) {
+    e.preventDefault();
+    hideError();
+
+    var username = document.getElementById('username').value.trim();
+    var password = document.getElementById('password').value;
+
+    if (!username) { showError('请输入用户名'); return false; }
+    if (!password) { showError('请输入密码'); return false; }
+
+    btnEl.disabled = true;
+    btnEl.textContent = '登录中...';
+
+    Auth.login(username, password).then(function() {
+      window.location.href = '../index.html';
+    }).catch(function(err) {
+      showError(err.message || '登录失败，请检查用户名和密码');
+      btnEl.disabled = false;
+      btnEl.textContent = '登 录';
+    });
+
+    return false;
+  };
+})();
+</script>
+
+</body>
+</html>
