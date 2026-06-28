@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>公告详情 - OA协同办公平台</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .announce-detail { max-width: 900px; margin: 0 auto; padding: 24px 0; }
+  .announce-detail .page-header { margin-bottom: 20px; }
+  .announce-body {
+    background: #fff;
+    border-radius: var(--radius);
+    padding: 32px;
+    box-shadow: var(--shadow-sm);
+    line-height: 1.8;
+    font-size: 15px;
+    color: var(--gray-800);
+    word-break: break-word;
+  }
+  .announce-body img { max-width: 100%; }
+  .announce-body p { margin-bottom: 12px; }
+  .announce-meta {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: var(--gray-500);
+  }
+  .announce-meta span { display: flex; align-items: center; gap: 4px; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo"><div class="logo-icon">OA</div>OA协同办公平台</div>
+  <div class="crumb">首页 / 公告列表 / <span id="detailCrumb">加载中...</span></div>
+  <div class="user">
+    <button class="btn btn-sm" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.15);color:#fff;" onclick="window.location.href='../index.html'">← 返回工作台</button>
+  </div>
+</header>
+
+<div class="main announce-detail">
+  <div class="page-header">
+    <div class="page-title"><span class="icon">📢</span><span id="annDetailTitle">加载中...</span></div>
+  </div>
+  <div class="announce-meta" id="annDetailMeta" style="display:none;">
+    <span>发布人ID：<strong id="annDetailPublisher">-</strong></span>
+    <span>发布时间：<strong id="annDetailTime">-</strong></span>
+    <span>状态：<strong id="annDetailStatus">-</strong></span>
+  </div>
+  <div class="announce-body" id="annDetailContent">
+    <div class="cal-loading">加载公告内容中...</div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var noticeId = params.get('noticeId');
+  if (!noticeId) {
+    document.getElementById('annDetailContent').innerHTML = '<div class="cal-error">参数错误：缺少公告ID</div>';
+    return;
+  }
+
+  fetch('/api/notices/' + noticeId)
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(res) {
+      if (res.code === 200) {
+        renderDetail(res.data);
+        // 自动标记已读
+        fetch('/api/notices/' + noticeId + '/read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        }).catch(function() {});
+      } else {
+        document.getElementById('annDetailContent').innerHTML = '<div class="cal-error">' + res.msg + '</div>';
+      }
+    })
+    .catch(function(e) {
+      document.getElementById('annDetailContent').innerHTML = '<div class="cal-error">网络请求失败：' + e.message + '</div>';
+    });
+
+  function renderDetail(ann) {
+    document.getElementById('detailCrumb').textContent = ann.title || '公告详情';
+    document.getElementById('annDetailTitle').textContent = ann.title || '无标题';
+    document.getElementById('annDetailPublisher').textContent = ann.publisherId || '-';
+    document.getElementById('annDetailTime').textContent = formatDateTime(ann.createTime);
+    var status = '';
+    if (ann.status === 0) status = '草稿';
+    else if (ann.status === 1) status = '已发布';
+    else if (ann.status === 2) status = '已撤回';
+    document.getElementById('annDetailStatus').textContent = status;
+    document.getElementById('annDetailMeta').style.display = '';
+    document.getElementById('annDetailContent').innerHTML = ann.content || '<p>暂无内容</p>';
+  }
+
+  function formatDateTime(dtStr) {
+    if (!dtStr) return '-';
+    return dtStr.replace('T', ' ').substring(0, 19);
+  }
+})();
+</script>
+
+</body>
+</html>

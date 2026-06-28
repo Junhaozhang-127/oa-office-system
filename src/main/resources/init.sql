@@ -239,3 +239,22 @@ CREATE TABLE sys_notice_read (
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     KEY idx_notice_user (notice_id, user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公告阅读记录表';
+
+-- 18. 消息通知表
+DROP TABLE IF EXISTS oa_notification;
+CREATE TABLE oa_notification (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+    receiver_id BIGINT NOT NULL COMMENT '接收人ID',
+    sender_id BIGINT COMMENT '发送人ID',
+    business_type VARCHAR(20) NOT NULL COMMENT '业务类型：ANNOUNCEMENT/MEETING/APPROVAL/LEAVE/OVERTIME/REIMBURSEMENT',
+    business_id BIGINT COMMENT '关联业务ID',
+    title VARCHAR(200) NOT NULL COMMENT '消息标题',
+    content VARCHAR(1000) DEFAULT '' COMMENT '消息内容',
+    status VARCHAR(10) DEFAULT 'UNREAD' COMMENT '状态：UNREAD/READ',
+    remind_time DATETIME COMMENT '提醒时间',
+    read_time DATETIME COMMENT '阅读时间',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_receiver_status (receiver_id, status),
+    INDEX idx_business (business_type, business_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息通知表';

@@ -31,4 +31,10 @@ public interface EmpEmployeeMapper extends BaseMapper<EmpEmployee> {
      * @return 员工总数
      */
     Long selectEmployeeCount();
+
+    /**
+     * 查询所有员工ID列表
+     * @return 员工ID列表
+     */
+    List<Long> selectAllEmpIds();
 }

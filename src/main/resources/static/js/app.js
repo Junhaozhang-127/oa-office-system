@@ -12,7 +12,7 @@ function switchTab(n, el) {
   document.querySelectorAll('.panel').forEach(function(p, i) { p.classList.toggle('active', i === n); });
   document.querySelectorAll('.nav-item').forEach(function(i) { i.classList.remove('active'); });
   if (el) el.classList.add('active');
-  var titles = ['工作台', '考勤日历', '数据看板', '审批流', '通知中心', '会议预约', '请假申请', '加班申请', '我的申请', '报销申请'];
+  var titles = ['工作台', '考勤日历', '数据看板', '审批流', '通知中心', '会议预约', '请假申请', '加班申请', '我的申请', '报销申请', '公告列表', '公告管理'];
   document.getElementById('crumbText').textContent = titles[n];
   // 离开数据看板时销毁图表
   if (n !== 2) disposeAllCharts();
@@ -21,11 +21,15 @@ function switchTab(n, el) {
   if (n === 1) { loadCalendar(); loadCalendarStats(); }
   if (n === 2) loadDashboard();
   if (n === 3) { loadApprovalPage(); }
+  if (n === 4) loadNotifications();
   if (n === 5) { loadMeetingRoomList(); loadMyReservations(); loadScheduleSelects(); }
   if (n === 6) { populateLeaveEmpSelect(); }
   if (n === 7) { populateOvertimeEmpSelect(); }
   if (n === 8) { populateAppEmpSelect(); loadMyApplications(); }
   if (n === 9) { populateExpEmpSelect(); }
+  if (n === 10) loadAnnouncementList();
+  if (n === 11) loadAnnounceManageList();
+  refreshUnreadBadge();
 }
 
 /* ---------- 考勤日历模块（日历网格与月度统计独立） ---------- */
@@ -1649,5 +1653,486 @@ function getStatusText(status) {
     'FINANCE_APPROVED': '⏳ 待打款', 'COMPLETED': '✅ 已完成', 'REJECTED': '❌ 已驳回'
   };
   return map[status] || status;
+}
+
+function refreshUnreadBadge() {
+  fetch('/api/notifications/unread-count')
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.code === 200) {
+        var count = res.data;
+        var badge = document.getElementById('navBadge');
+        if (badge) {
+          if (count > 0) {
+            badge.textContent = count > 99 ? '99+' : count;
+            badge.style.display = 'inline-flex';
+          } else {
+            badge.style.display = 'none';
+          }
+        }
+      }
+    })
+    .catch(function() {});
+}
+
+/** 页面加载和定时刷新Badge */
+document.addEventListener('DOMContentLoaded', function() {
+  refreshUnreadBadge();
+  setInterval(refreshUnreadBadge, 30000); // 每30秒刷新一次未读数
+});
+
+/* ---------- 通知中心 ---------- */
+var notifyPage = 1, notifyTotalPages = 1;
+
+function loadNotifications(action) {
+  if (action === 'prev') notifyPage = Math.max(1, notifyPage - 1);
+  else if (action === 'next') notifyPage = Math.min(notifyTotalPages, notifyPage + 1);
+  else if (action === 'last') notifyPage = notifyTotalPages;
+  else if (typeof action === 'number') notifyPage = action;
+
+  var typeFilter = document.getElementById('notifyTypeFilter').value;
+  var statusFilter = document.getElementById('notifyStatusFilter').value;
+
+  var url = '/api/notifications/my?page=' + notifyPage + '&size=10';
+  if (typeFilter) url += '&businessType=' + typeFilter;
+  if (statusFilter) url += '&status=' + statusFilter;
+
+  var container = document.getElementById('notificationList');
+  container.innerHTML = '<div class="cal-loading">加载中...</div>';
+
+  fetch(url)
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.code === 200) {
+        renderNotificationList(res.data);
+        notifyTotalPages = Math.ceil(res.data.total / res.data.size) || 1;
+        notifyPage = res.data.page;
+        document.getElementById('notifyPageInfo').textContent = '第' + notifyPage + '页/共' + notifyTotalPages + '页';
+        document.getElementById('notifyPrevBtn').disabled = notifyPage <= 1;
+        document.getElementById('notifyNextBtn').disabled = notifyPage >= notifyTotalPages;
+        document.getElementById('notifyUnreadBadge').textContent = (res.data.total || 0) + '条消息';
+      } else {
+        container.innerHTML = '<div class="cal-error">加载失败：' + res.msg + '</div>';
+      }
+    })
+    .catch(function(e) {
+      container.innerHTML = '<div class="cal-error">网络请求失败：' + e.message + '</div>';
+    });
+}
+
+function renderNotificationList(data) {
+  var rows = data.rows, container = document.getElementById('notificationList');
+  if (!rows || rows.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400);">暂无消息通知</div>';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < rows.length; i++) {
+    var n = rows[i];
+    var isUnread = n.status === 'UNREAD';
+    var typeTag = getBusinessTypeTag(n.businessType);
+    var timeAgo = getTimeAgo(n.createTime);
+    html += '<div class="notice-item' + (isUnread ? ' unread' : '') + '" id="notifyItem' + n.id + '">'
+      + '<div>'
+      + '<div class="notice-title">' + (isUnread ? '<span class="notice-dot"></span>' : '') + typeTag + ' ' + escapeHtml(n.title) + '</div>'
+      + '<div class="notice-meta">' + escapeHtml(n.content || '') + '</div>'
+      + '</div>'
+      + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">'
+      + '<div class="notice-time">' + timeAgo + '</div>'
+      + (isUnread ? '<button class="btn btn-xs" onclick="markNotifyRead(' + n.id + ')">标记已读</button>' : '<span style="font-size:11px;color:var(--gray-400);">已读</span>')
+      + '</div>'
+      + '</div>';
+  }
+  container.innerHTML = html;
+}
+
+function markNotifyRead(id) {
+  fetch('/api/notifications/' + id + '/read', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.code === 200) {
+        loadNotifications();
+        refreshUnreadBadge();
+      }
+    });
+}
+
+function markAllNotificationsRead() {
+  if (!confirm('确认将所有通知标记为已读？')) return;
+  fetch('/api/notifications/read-all', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.code === 200) {
+        loadNotifications();
+        refreshUnreadBadge();
+      }
+    });
+}
+
+function getBusinessTypeTag(type) {
+  var map = {
+    'ANNOUNCEMENT': '<span class="tag t-blue">公告</span>',
+    'MEETING': '<span class="tag t-green">会议</span>',
+    'APPROVAL': '<span class="tag t-yellow">审批</span>',
+    'LEAVE': '<span class="tag t-blue">请假</span>',
+    'OVERTIME': '<span class="tag t-green">加班</span>',
+    'REIMBURSEMENT': '<span class="tag t-yellow">报销</span>'
+  };
+  return map[type] || '<span class="tag t-gray">' + (type || '未知') + '</span>';
+}
+
+function getTimeAgo(dateStr) {
+  if (!dateStr) return '-';
+  var date = new Date(dateStr.replace(' ', 'T'));
+  var now = new Date();
+  var diffMs = now - date;
+  if (isNaN(diffMs)) return dateStr;
+  var diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return '刚刚';
+  if (diffMin < 60) return diffMin + '分钟前';
+  var diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return diffHour + '小时前';
+  var diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 30) return diffDay + '天前';
+  return dateStr.substring(0, 10);
+}
+
+/* ---------- 公告列表（面板9） ---------- */
+var annPage = 1, annTotalPages = 1;
+
+function loadAnnouncementList(action) {
+  if (action === 'prev') annPage = Math.max(1, annPage - 1);
+  else if (action === 'next') annPage = Math.min(annTotalPages, annPage + 1);
+  else if (action === 'last') annPage = annTotalPages;
+  else if (typeof action === 'number') annPage = action;
+
+  var tbody = document.getElementById('announceTableBody');
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:30px;">加载中...</td></tr>';
+
+  fetch('/api/notices/published?page=' + annPage + '&size=10&type=2')
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.code === 200) {
+        renderAnnouncementList(res.data);
+      } else {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger);padding:30px;">加载失败：' + res.msg + '</td></tr>';
+      }
+    })
+    .catch(function(e) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger);padding:30px;">网络请求失败：' + e.message + '</td></tr>';
+    });
+}
+
+function renderAnnouncementList(data) {
+  var rows = data.rows, tbody = document.getElementById('announceTableBody');
+  annTotalPages = Math.ceil(data.total / data.size) || 1;
+  annPage = data.page;
+  document.getElementById('annPageInfo').textContent = '第' + annPage + '页/共' + annTotalPages + '页';
+  document.getElementById('annPrevBtn').disabled = annPage <= 1;
+  document.getElementById('annNextBtn').disabled = annPage >= annTotalPages;
+  document.getElementById('announceCount').textContent = data.total + '条公告';
+
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:30px;">暂无已发布公告</td></tr>';
+    return;
+  }
+
+  // 收集公告ID列表，查询已读状态
+  var noticeIds = [];
+  for (var i = 0; i < rows.length; i++) noticeIds.push(rows[i].id);
+
+  // 先渲染基础数据，再异步更新已读状态
+  var html = '';
+  for (var i2 = 0; i2 < rows.length; i2++) {
+    var ann = rows[i2];
+    html += '<tr>'
+      + '<td><strong>' + escapeHtml(ann.title) + '</strong></td>'
+      + '<td><span class="tag t-blue">公告</span></td>'
+      + '<td>' + formatDateTime(ann.createTime) + '</td>'
+      + '<td id="annReadStatus' + ann.id + '"><span class="tag t-yellow">查询中...</span></td>'
+      + '<td class="txt-center">'
+      + '<button class="btn btn-xs" onclick="viewAnnounceDetail(' + ann.id + ')">查看</button> '
+      + '<button class="btn btn-primary btn-xs" onclick="markAnnounceRead(' + ann.id + ')">标记已读</button>'
+      + '</td>'
+      + '</tr>';
+  }
+  tbody.innerHTML = html;
+
+  // 查询已读状态
+  fetch('/api/notices/read-status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ noticeIds: noticeIds })
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.code === 200) {
+        var readIds = res.data || [];
+        for (var j = 0; j < rows.length; j++) {
+          var cell = document.getElementById('annReadStatus' + rows[j].id);
+          if (cell) {
+            if (readIds.indexOf(rows[j].id) >= 0) {
+              cell.innerHTML = '<span class="tag t-green">已读</span>';
+            } else {
+              cell.innerHTML = '<span class="tag t-red">未读</span>';
+            }
+          }
+        }
+      }
+    });
+}
+
+function markAnnounceRead(noticeId) {
+  fetch('/api/notices/' + noticeId + '/read', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({})
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.code === 200) {
+        var cell = document.getElementById('annReadStatus' + noticeId);
+        if (cell) cell.innerHTML = '<span class="tag t-green">已读</span>';
+        refreshUnreadBadge();
+      }
+    });
+}
+
+function viewAnnounceDetail(noticeId) {
+  window.location.href = 'pages/announcement-detail.html?noticeId=' + noticeId;
+}
+
+/* ---------- 公告管理（面板10） ---------- */
+var annMPage = 1, annMTotalPages = 1;
+var wangEditor = null;
+
+function loadAnnounceManageList(action) {
+  if (action === 'prev') annMPage = Math.max(1, annMPage - 1);
+  else if (action === 'next') annMPage = Math.min(annMTotalPages, annMPage + 1);
+  else if (action === 'last') annMPage = annMTotalPages;
+  else if (typeof action === 'number') annMPage = action;
+
+  var typeFilter = document.getElementById('annManageTypeFilter').value;
+  var statusFilter = document.getElementById('annManageStatusFilter').value;
+  var url = '/api/notices?page=' + annMPage + '&size=10';
+  if (typeFilter) url += '&type=' + typeFilter;
+  if (statusFilter) url += '&status=' + statusFilter;
+
+  var tbody = document.getElementById('annManageTableBody');
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:30px;">加载中...</td></tr>';
+
+  fetch(url)
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.code === 200) {
+        renderAnnounceManageList(res.data);
+      } else {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger);padding:30px;">加载失败：' + res.msg + '</td></tr>';
+      }
+    })
+    .catch(function(e) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger);padding:30px;">网络请求失败：' + e.message + '</td></tr>';
+    });
+}
+
+function renderAnnounceManageList(data) {
+  var rows = data.rows, tbody = document.getElementById('annManageTableBody');
+  annMTotalPages = Math.ceil(data.total / data.size) || 1;
+  annMPage = data.page;
+  document.getElementById('annMPageInfo').textContent = '第' + annMPage + '页/共' + annMTotalPages + '页';
+  document.getElementById('annMPrevBtn').disabled = annMPage <= 1;
+  document.getElementById('annMNextBtn').disabled = annMPage >= annMTotalPages;
+
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:30px;">暂无公告</td></tr>';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < rows.length; i++) {
+    var ann = rows[i];
+    var statusTag = getNoticeStatusTag(ann.status);
+    var typeTag = ann.type === 1 ? '<span class="tag t-blue">通知</span>' : '<span class="tag t-blue">公告</span>';
+    var actions = '';
+    if (ann.status === 0) {
+      actions = '<button class="btn btn-xs" onclick="editAnnounce(' + ann.id + ')">编辑</button> '
+        + '<button class="btn btn-primary btn-xs" onclick="publishAnnounce(' + ann.id + ')">发布</button>';
+    } else if (ann.status === 1) {
+      actions = '<button class="btn btn-xs" onclick="viewAnnounceDetail(' + ann.id + ')">查看</button> '
+        + '<button class="btn btn-danger btn-xs" onclick="withdrawAnnounce(' + ann.id + ')">撤回</button>';
+    } else {
+      actions = '<button class="btn btn-xs" onclick="viewAnnounceDetail(' + ann.id + ')">查看</button>';
+    }
+    html += '<tr>'
+      + '<td><strong>' + escapeHtml(ann.title) + '</strong></td>'
+      + '<td>' + typeTag + '</td>'
+      + '<td>' + statusTag + '</td>'
+      + '<td>' + formatDateTime(ann.createTime) + '</td>'
+      + '<td class="txt-center">' + actions + '</td>'
+      + '</tr>';
+  }
+  tbody.innerHTML = html;
+}
+
+function getNoticeStatusTag(status) {
+  if (status === 0) return '<span class="tag t-yellow">草稿</span>';
+  if (status === 1) return '<span class="tag t-green">已发布</span>';
+  if (status === 2) return '<span class="tag t-gray">已撤回</span>';
+  return '<span class="tag t-gray">未知</span>';
+}
+
+/* ---------- 公告表单（WangEditor） ---------- */
+var editingNoticeId = null;
+
+function showAnnounceCreate() {
+  editingNoticeId = null;
+  document.getElementById('announceFormTitle').textContent = '新建公告';
+  document.getElementById('announceTitle').value = '';
+  document.getElementById('announceType').value = '2';
+  document.getElementById('announceSubmitBtn').textContent = '保存草稿';
+  document.getElementById('announceFormCard').style.display = '';
+  initWangEditor('');
+}
+
+function editAnnounce(id) {
+  fetch('/api/notices/' + id)
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.code === 200) {
+        var ann = res.data;
+        if (ann.status !== 0) { alert('仅草稿状态可编辑'); return; }
+        editingNoticeId = ann.id;
+        document.getElementById('announceFormTitle').textContent = '编辑公告';
+        document.getElementById('announceTitle').value = ann.title || '';
+        document.getElementById('announceType').value = ann.type || 2;
+        document.getElementById('announceSubmitBtn').textContent = '保存修改';
+        document.getElementById('announceFormCard').style.display = '';
+        initWangEditor(ann.content || '');
+      } else {
+        alert(res.msg);
+      }
+    })
+    .catch(function(e) { alert('加载公告失败：' + e.message); });
+}
+
+function hideAnnounceForm() {
+  document.getElementById('announceFormCard').style.display = 'none';
+  destroyWangEditor();
+}
+
+function initWangEditor(content) {
+  destroyWangEditor();
+  var container = document.getElementById('wangEditorContainer');
+  container.innerHTML = '';
+  try {
+    if (typeof window.wangEditor !== 'undefined') {
+      wangEditor = window.wangEditor.createEditor({
+        selector: container,
+        html: content || '<p></p>',
+        config: { placeholder: '请输入公告内容...' }
+      });
+    } else {
+      // 降级为textarea
+      container.innerHTML = '<textarea id="announceContentFallback" class="form-input" rows="12" placeholder="请输入公告内容（富文本编辑器加载中...）" style="width:100%;"></textarea>';
+      if (content) document.getElementById('announceContentFallback').value = content;
+    }
+  } catch (e) {
+    console.warn('WangEditor初始化失败，使用降级方案：', e);
+    container.innerHTML = '<textarea id="announceContentFallback" class="form-input" rows="12" placeholder="请输入公告内容..." style="width:100%;"></textarea>';
+    if (content) document.getElementById('announceContentFallback').value = content;
+  }
+}
+
+function destroyWangEditor() {
+  if (wangEditor) {
+    try { wangEditor.destroy(); } catch (e) {}
+    wangEditor = null;
+  }
+}
+
+function getEditorContent() {
+  if (wangEditor) {
+    return wangEditor.getHtml();
+  }
+  var fallback = document.getElementById('announceContentFallback');
+  return fallback ? fallback.value : '';
+}
+
+function submitAnnounceForm() {
+  var msgEl = document.getElementById('announceFormMsgEl');
+  var title = document.getElementById('announceTitle').value.trim();
+  var type = parseInt(document.getElementById('announceType').value);
+  var content = getEditorContent();
+
+  if (!title) { showFormMsgEl(msgEl, '请输入公告标题', 'error'); return; }
+  if (!content || content === '<p></p>' || content === '<p><br></p>') {
+    showFormMsgEl(msgEl, '请输入公告内容', 'error'); return;
+  }
+
+  var payload = { title: title, type: type, content: content };
+  var url = '/api/notices';
+  var method = 'POST';
+
+  if (editingNoticeId) {
+    url = '/api/notices/' + editingNoticeId;
+    method = 'PUT';
+  }
+
+  fetch(url, {
+    method: method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.code === 200) {
+        showFormMsgEl(msgEl, editingNoticeId ? '保存成功' : '创建成功（草稿状态）', 'success');
+        if (!editingNoticeId) {
+          editingNoticeId = res.data.id;
+        }
+        loadAnnounceManageList();
+      } else {
+        showFormMsgEl(msgEl, res.msg, 'error');
+      }
+    })
+    .catch(function(e) {
+      showFormMsgEl(msgEl, '网络请求失败：' + e.message, 'error');
+    });
+}
+
+function publishAnnounce(id) {
+  if (!confirm('确认发布此公告？发布后将通知所有用户。')) return;
+  fetch('/api/notices/' + id + '/publish', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.code === 200) {
+        alert('发布成功');
+        loadAnnounceManageList();
+        refreshUnreadBadge();
+      } else {
+        alert(res.msg);
+      }
+    })
+    .catch(function(e) { alert('发布失败：' + e.message); });
+}
+
+function withdrawAnnounce(id) {
+  if (!confirm('确认撤回此公告？')) return;
+  fetch('/api/notices/' + id + '/withdraw', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.code === 200) {
+        alert('撤回成功');
+        loadAnnounceManageList();
+      } else {
+        alert(res.msg);
+      }
+    })
+    .catch(function(e) { alert('撤回失败：' + e.message); });
+}
+
+function showFormMsgEl(el, msg, type) {
+  el.style.display = 'block';
+  el.className = 'form-msg form-msg-' + type;
+  el.textContent = msg;
 }
 

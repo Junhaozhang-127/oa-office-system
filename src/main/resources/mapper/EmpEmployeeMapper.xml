@@ -36,4 +36,9 @@
         SELECT COUNT(*) FROM emp_employee
     </select>
 
+    <!-- 查询所有员工ID列表，用于公告全站通知 -->
+    <select id="selectAllEmpIds" resultType="java.lang.Long">
+        SELECT id FROM emp_employee WHERE status IN (1, 2)
+    </select>
+
 </mapper>

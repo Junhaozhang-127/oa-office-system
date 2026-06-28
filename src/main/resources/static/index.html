@@ -6,6 +6,9 @@
 <title>OA协同办公平台</title>
 <link rel="stylesheet" href="css/style.css">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<!-- WangEditor 富文本编辑器 CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@wangeditor/editor@5.1.23/dist/index.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@wangeditor/editor@5.1.23/dist/css/style.css">
 </head>
 <body onload="loadEmployeeSelect()">
 
@@ -41,7 +44,7 @@
         <span class="nav-icon">📝</span>审批流
       </div>
       <div class="nav-item" onclick="switchTab(4,this)">
-        <span class="nav-icon">🔔</span>通知中心
+        <span class="nav-icon">🔔</span>通知中心<span class="nav-badge" id="navBadge" style="display:none;">0</span>
       </div>
       <div class="nav-item" onclick="switchTab(5,this)">
         <span class="nav-icon">🏢</span>会议预约
@@ -60,6 +63,15 @@
       </div>
       <div class="nav-item" onclick="switchTab(9,this)">
         <span class="nav-icon">💰</span>报销申请
+      </div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">信息发布</div>
+      <div class="nav-item" onclick="switchTab(10,this)">
+        <span class="nav-icon">📢</span>公告列表
+      </div>
+      <div class="nav-item" onclick="switchTab(11,this)">
+        <span class="nav-icon">✏️</span>公告管理
       </div>
     </div>
     <div class="sidebar-footer">
@@ -372,38 +384,35 @@
     <div class="panel" id="panel4">
       <div class="page-header">
         <div class="page-title"><span class="icon">🔔</span>消息通知中心</div>
+        <div style="display:flex;gap:8px;">
+          <select id="notifyTypeFilter" onchange="loadNotifications()" class="form-input" style="max-width:130px;font-size:12px;">
+            <option value="">全部类型</option>
+            <option value="ANNOUNCEMENT">公告通知</option>
+            <option value="MEETING">会议提醒</option>
+            <option value="APPROVAL">审批待办</option>
+            <option value="LEAVE">请假通知</option>
+            <option value="OVERTIME">加班通知</option>
+            <option value="REIMBURSEMENT">报销通知</option>
+          </select>
+          <select id="notifyStatusFilter" onchange="loadNotifications()" class="form-input" style="max-width:110px;font-size:12px;">
+            <option value="">全部状态</option>
+            <option value="UNREAD">未读</option>
+            <option value="READ">已读</option>
+          </select>
+          <button class="btn btn-sm" onclick="markAllNotificationsRead()">✓ 全部已读</button>
+        </div>
       </div>
       <div class="card">
-        <div class="card-hd"><h3>全部消息</h3><span class="tag t-red">2条未读</span></div>
-        <div class="card-bd">
-          <div class="notice-item">
-            <div>
-              <div class="notice-title"><span class="notice-dot"></span>报销审批通过</div>
-              <div class="notice-meta">您的差旅费报销单 BX20250519001 已通过财务审批，预计3个工作日内到账</div>
-            </div>
-            <div class="notice-time">10分钟前</div>
-          </div>
-          <div class="notice-item">
-            <div>
-              <div class="notice-title"><span class="notice-dot"></span>会议提醒</div>
-              <div class="notice-meta">产品评审会将于5月20日14:00在3号会议室举行，请准时参加</div>
-            </div>
-            <div class="notice-time">1小时前</div>
-          </div>
-          <div class="notice-item">
-            <div>
-              <div class="notice-title">考勤异常提醒</div>
-              <div class="notice-meta">您5月13日下班未打卡，已标记为缺卡，请及时补卡或联系HR</div>
-            </div>
-            <div class="notice-time">昨天</div>
-          </div>
-          <div class="notice-item">
-            <div>
-              <div class="notice-title">公告：端午节放假通知</div>
-              <div class="notice-meta">2026年端午节放假时间为6月22日-24日，共3天。请提前安排好工作。</div>
-            </div>
-            <div class="notice-time">昨天</div>
-          </div>
+        <div class="card-hd"><h3>全部消息</h3><span id="notifyUnreadBadge" class="tag t-red">0条未读</span></div>
+        <div class="card-bd zero" id="notificationList">
+          <div class="cal-loading">加载中...</div>
+        </div>
+        <div class="card-ft" id="notifyPagination" style="padding:12px 20px;border-top:1px solid var(--gray-200);display:flex;justify-content:center;gap:8px;">
+          <button class="btn btn-sm" onclick="loadNotifications(1)">首页</button>
+          <button class="btn btn-sm" id="notifyPrevBtn" onclick="loadNotifications('prev')">上一页</button>
+          <span id="notifyPageInfo" style="font-size:12px;color:var(--gray-500);line-height:32px;">第1页/共1页</span>
+          <button class="btn btn-sm" id="notifyNextBtn" onclick="loadNotifications('next')">下一页</button>
+          <button class="btn btn-sm" onclick="loadNotifications('last')">末页</button>
         </div>
       </div>
     </div>
@@ -764,6 +773,101 @@
               <tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:8px;" id="expItemEmpty">暂无明细，请点击"添加明细行"</td></tr>
             </tfoot>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 面板10：公告列表 ==================== -->
+    <div class="panel" id="panel10">
+      <div class="page-header">
+        <div class="page-title"><span class="icon">📢</span>公告列表</div>
+      </div>
+      <div class="card">
+        <div class="card-hd">
+          <h3>已发布公告</h3>
+          <span id="announceCount" style="font-size:12px;color:var(--gray-400);">加载中...</span>
+        </div>
+        <div class="card-bd zero">
+          <table>
+            <thead><tr><th>标题</th><th>类型</th><th>发布时间</th><th>阅读状态</th><th class="txt-center">操作</th></tr></thead>
+            <tbody id="announceTableBody">
+              <tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:30px;">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-ft" id="announcePagination" style="padding:12px 20px;border-top:1px solid var(--gray-200);display:flex;justify-content:center;gap:8px;">
+          <button class="btn btn-sm" onclick="loadAnnouncementList(1)">首页</button>
+          <button class="btn btn-sm" id="annPrevBtn" onclick="loadAnnouncementList('prev')">上一页</button>
+          <span id="annPageInfo" style="font-size:12px;color:var(--gray-500);line-height:32px;">第1页/共1页</span>
+          <button class="btn btn-sm" id="annNextBtn" onclick="loadAnnouncementList('next')">下一页</button>
+          <button class="btn btn-sm" onclick="loadAnnouncementList('last')">末页</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 面板11：公告管理 ==================== -->
+    <div class="panel" id="panel11">
+      <div class="page-header">
+        <div class="page-title"><span class="icon">✏️</span>公告管理</div>
+        <button class="btn btn-primary btn-sm" onclick="showAnnounceCreate()">+ 新建公告</button>
+      </div>
+      <div class="card">
+        <div class="card-hd">
+          <h3>全部公告</h3>
+          <div style="display:flex;gap:8px;">
+            <select id="annManageTypeFilter" onchange="loadAnnounceManageList()" class="form-input" style="max-width:110px;font-size:12px;">
+              <option value="">全部类型</option>
+              <option value="1">通知</option>
+              <option value="2">公告</option>
+            </select>
+            <select id="annManageStatusFilter" onchange="loadAnnounceManageList()" class="form-input" style="max-width:110px;font-size:12px;">
+              <option value="">全部状态</option>
+              <option value="0">草稿</option>
+              <option value="1">已发布</option>
+              <option value="2">已撤回</option>
+            </select>
+          </div>
+        </div>
+        <div class="card-bd zero">
+          <table>
+            <thead><tr><th>标题</th><th>类型</th><th>状态</th><th>发布时间</th><th class="txt-center">操作</th></tr></thead>
+            <tbody id="annManageTableBody">
+              <tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:30px;">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-ft" id="annManagePagination" style="padding:12px 20px;border-top:1px solid var(--gray-200);display:flex;justify-content:center;gap:8px;">
+          <button class="btn btn-sm" onclick="loadAnnounceManageList(1)">首页</button>
+          <button class="btn btn-sm" id="annMPrevBtn" onclick="loadAnnounceManageList('prev')">上一页</button>
+          <span id="annMPageInfo" style="font-size:12px;color:var(--gray-500);line-height:32px;">第1页/共1页</span>
+          <button class="btn btn-sm" id="annMNextBtn" onclick="loadAnnounceManageList('next')">下一页</button>
+          <button class="btn btn-sm" onclick="loadAnnounceManageList('last')">末页</button>
+        </div>
+      </div>
+      <!-- 创建/编辑公告表单 -->
+      <div class="card" id="announceFormCard" style="display:none;">
+        <div class="card-hd"><h3 id="announceFormTitle">新建公告</h3></div>
+        <div class="card-bd">
+          <div id="announceFormMsgEl" style="display:none;"></div>
+          <div class="form-group">
+            <label>公告标题 <span style="color:var(--danger);">*</span></label>
+            <input type="text" id="announceTitle" class="form-input" placeholder="请输入公告标题" maxlength="100">
+          </div>
+          <div class="form-group">
+            <label>公告类型</label>
+            <select id="announceType" class="form-input">
+              <option value="1">通知</option>
+              <option value="2">公告</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>公告内容 <span style="color:var(--danger);">*</span></label>
+            <div id="wangEditorContainer" style="border:1px solid var(--gray-200);border-radius:var(--radius-xs);min-height:300px;"></div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:16px;">
+            <button class="btn btn-primary" id="announceSubmitBtn" onclick="submitAnnounceForm()">保存草稿</button>
+            <button class="btn btn-sm" onclick="hideAnnounceForm()">取消</button>
+          </div>
         </div>
       </div>
     </div>
