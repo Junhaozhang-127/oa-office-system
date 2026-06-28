@@ -12,7 +12,7 @@ function switchTab(n, el) {
   document.querySelectorAll('.panel').forEach(function(p, i) { p.classList.toggle('active', i === n); });
   document.querySelectorAll('.nav-item').forEach(function(i) { i.classList.remove('active'); });
   if (el) el.classList.add('active');
-  var titles = ['工作台', '考勤日历', '数据看板', '审批流', '通知中心', '会议预约', '请假申请', '加班申请', '我的申请'];
+  var titles = ['工作台', '考勤日历', '数据看板', '审批流', '通知中心', '会议预约', '请假申请', '加班申请', '我的申请', '报销申请'];
   document.getElementById('crumbText').textContent = titles[n];
   // 离开数据看板时销毁图表
   if (n !== 2) disposeAllCharts();
@@ -20,10 +20,12 @@ function switchTab(n, el) {
   if (n === 0) loadEmployeeList();
   if (n === 1) { loadCalendar(); loadCalendarStats(); }
   if (n === 2) loadDashboard();
+  if (n === 3) { loadApprovalPage(); }
   if (n === 5) { loadMeetingRoomList(); loadMyReservations(); loadScheduleSelects(); }
   if (n === 6) { populateLeaveEmpSelect(); }
   if (n === 7) { populateOvertimeEmpSelect(); }
   if (n === 8) { populateAppEmpSelect(); loadMyApplications(); }
+  if (n === 9) { populateExpEmpSelect(); }
 }
 
 /* ---------- 考勤日历模块（日历网格与月度统计独立） ---------- */
@@ -921,7 +923,6 @@ function initDashboardDates() {
 /** 加载所有看板数据 */
 function loadDashboard() {
   initDashboardDates();
-  loadDashboardSummary();
   loadDeptBarChart();
   loadLeavePieChart();
   loadExpenseLineChart();
@@ -932,27 +933,6 @@ function loadDashboard() {
 function refreshDashboard() {
   disposeAllCharts();
   loadDashboard();
-}
-
-/** 加载首页统计卡片 */
-function loadDashboardSummary() {
-  fetch('/api/dashboard/summary')
-    .then(function(r) { return r.json(); })
-    .then(function(res) {
-      if (res.code === 200) {
-        var d = res.data;
-        document.getElementById('dashTotalEmp').textContent = d.totalEmployees || 0;
-        document.getElementById('dashTotalDept').textContent = d.totalDepartments || 0;
-        document.getElementById('dashPending').textContent = d.pendingApprovals || 0;
-        document.getElementById('dashAnomaly').textContent = d.todayAnomalies || 0;
-        document.getElementById('dashMonthLeave').textContent = d.monthLeaveCount || 0;
-        var amt = d.monthExpenseAmount != null ? Number(d.monthExpenseAmount).toLocaleString() : '0';
-        document.getElementById('dashMonthExpense').textContent = amt;
-      }
-    })
-    .catch(function(e) {
-      console.error('统计卡片加载失败:', e);
-    });
 }
 
 /** 部门人数柱状图 */
@@ -1167,21 +1147,41 @@ function disposeAllCharts() {
   });
 }
 
-/** 报表导出 */
+/** 打开导出选择弹窗 */
 function exportReport() {
+  document.getElementById('exportModal').style.display = 'flex';
+}
+
+/** 关闭导出弹窗 */
+function closeExportModal() {
+  document.getElementById('exportModal').style.display = 'none';
+}
+
+/** 全选/取消全选 */
+function toggleAllChecks(checked) {
+  document.querySelectorAll('.export-check').forEach(function(cb) { cb.checked = checked; });
+}
+
+/** 执行导出 */
+function doExport() {
+  var checks = document.querySelectorAll('.export-check:checked');
+  var sheets = [];
+  checks.forEach(function(cb) { sheets.push(cb.value); });
+  if (sheets.length === 0) { alert('请至少选择一个导出模块'); return; }
+
   var startDate = document.getElementById('dashStartDate').value;
   var endDate = document.getElementById('dashEndDate').value;
-  var params = '';
-  if (startDate) params += '&startDate=' + startDate;
-  if (endDate) params += '&endDate=' + endDate;
 
-  var btn = document.querySelector('.btn-primary.btn-sm');
+  var btn = document.getElementById('exportConfirmBtn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ 导出中...'; }
 
-  fetch('/api/reports/export?' + params.substring(1))
+  fetch('/api/reports/export', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sheets: sheets, startDate: startDate, endDate: endDate })
+  })
     .then(function(r) {
       if (!r.ok) throw new Error('导出失败: HTTP ' + r.status);
-      // 从 Content-Disposition 获取文件名
       var disposition = r.headers.get('Content-Disposition');
       var fileName = 'OA统计报表.xlsx';
       if (disposition) {
@@ -1191,6 +1191,7 @@ function exportReport() {
       return r.blob().then(function(blob) { return { blob: blob, fileName: fileName }; });
     })
     .then(function(result) {
+      closeExportModal();
       var url = window.URL.createObjectURL(result.blob);
       var a = document.createElement('a');
       a.href = url;
@@ -1199,12 +1200,12 @@ function exportReport() {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      if (btn) { btn.disabled = false; btn.textContent = '📥 导出报表'; }
+      if (btn) { btn.disabled = false; btn.textContent = '📥 导出Excel'; }
     })
     .catch(function(e) {
       console.error('报表导出失败:', e);
       alert('报表导出失败：' + e.message);
-      if (btn) { btn.disabled = false; btn.textContent = '📥 导出报表'; }
+      if (btn) { btn.disabled = false; btn.textContent = '📥 导出Excel'; }
     });
 }
 
@@ -1214,4 +1215,439 @@ window.addEventListener('resize', function() {
     if (dashCharts[key]) dashCharts[key].resize();
   });
 });
+
+/* ================================================================
+   报销申请模块
+   ================================================================ */
+
+/** 加载报销人下拉框 */
+function populateExpEmpSelect() {
+  var sel = document.getElementById('expEmpId');
+  if (!sel) return;
+  if (sel.options.length > 1) return;
+  fetch('/api/employee/list')
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.code === 200 && res.data && res.data.rows) {
+        sel.innerHTML = '<option value="">请选择员工</option>';
+        res.data.rows.forEach(function(emp) {
+          sel.innerHTML += '<option value="' + emp.id + '">' + emp.name + ' (' + emp.empNo + ')</option>';
+        });
+      }
+    });
+}
+
+/** 发票上传处理 */
+function handleInvoiceUpload(input) {
+  var file = input.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { alert('请选择图片文件'); return; }
+  if (file.size > 10 * 1024 * 1024) { alert('文件大小不能超过10MB'); return; }
+
+  var formData = new FormData();
+  formData.append('file', file);
+
+  document.getElementById('uploadLoading').style.display = 'block';
+  document.getElementById('uploadPlaceholder').style.display = 'none';
+  document.getElementById('uploadPreview').style.display = 'none';
+
+  fetch('/api/expense-report/upload', { method: 'POST', body: formData })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      document.getElementById('uploadLoading').style.display = 'none';
+      if (res.code === 200) {
+        document.getElementById('expInvoiceUrl').value = res.data.url;
+        document.getElementById('invoiceThumb').src = res.data.url;
+        document.getElementById('uploadPreview').style.display = 'block';
+      } else {
+        alert('上传失败：' + res.msg);
+        document.getElementById('uploadPlaceholder').style.display = 'block';
+      }
+    })
+    .catch(function(e) {
+      document.getElementById('uploadLoading').style.display = 'none';
+      document.getElementById('uploadPlaceholder').style.display = 'block';
+      alert('上传失败：' + e.message);
+    });
+}
+
+/** 移除已上传的发票 */
+function removeInvoice() {
+  document.getElementById('expInvoiceUrl').value = '';
+  document.getElementById('invoiceFileInput').value = '';
+  document.getElementById('uploadPreview').style.display = 'none';
+  document.getElementById('uploadPlaceholder').style.display = 'block';
+}
+
+/** 添加明细行 */
+function addExpenseItem() {
+  var tbody = document.getElementById('expItemTableBody');
+  var rowCount = tbody.querySelectorAll('.expense-item-row').length;
+  var tr = document.createElement('tr');
+  tr.className = 'expense-item-row';
+  tr.innerHTML = '<td class="item-seq">' + (rowCount + 1) + '</td>'
+    + '<td><input type="text" class="form-input item-name" placeholder="如：往返高铁票"></td>'
+    + '<td><input type="number" class="form-input item-amount txt-right" placeholder="0.00" step="0.01" min="0" onchange="calcExpTotal()"></td>'
+    + '<td><input type="date" class="form-input item-date"></td>'
+    + '<td><input type="text" class="form-input item-remark" placeholder="备注"></td>'
+    + '<td class="txt-center"><button class="btn btn-danger btn-xs" onclick="removeExpenseItem(this)">删除</button></td>';
+  tbody.appendChild(tr);
+  document.getElementById('expItemEmpty').style.display = 'none';
+}
+
+/** 删除明细行 */
+function removeExpenseItem(btn) {
+  var tr = btn.closest('tr');
+  tr.parentNode.removeChild(tr);
+  // 重新编号
+  var rows = document.querySelectorAll('#expItemTableBody .expense-item-row');
+  rows.forEach(function(row, i) { row.querySelector('.item-seq').textContent = i + 1; });
+  if (rows.length === 0) {
+    document.getElementById('expItemEmpty').style.display = '';
+  }
+  calcExpTotal();
+}
+
+/** 计算报销总额（从明细行累加） */
+function calcExpTotal() {
+  var total = 0;
+  document.querySelectorAll('.item-amount').forEach(function(input) {
+    var v = parseFloat(input.value);
+    if (!isNaN(v) && v > 0) total += v;
+  });
+  document.getElementById('expTotalAmount').value = total.toFixed(2);
+}
+
+/** 提交报销单 */
+function submitExpenseReport() {
+  var empId = document.getElementById('expEmpId').value;
+  if (!empId) { alert('请选择报销人'); return; }
+
+  var expenseType = document.getElementById('expType').value;
+  var description = document.getElementById('expDesc').value;
+  var invoiceUrl = document.getElementById('expInvoiceUrl').value;
+
+  // 收集明细
+  var items = [];
+  var rows = document.querySelectorAll('#expItemTableBody .expense-item-row');
+  rows.forEach(function(row) {
+    var name = row.querySelector('.item-name').value.trim();
+    var amount = parseFloat(row.querySelector('.item-amount').value);
+    var date = row.querySelector('.item-date').value;
+    var remark = row.querySelector('.item-remark').value.trim();
+
+    if (!name || isNaN(amount) || amount <= 0) return;
+    items.push({
+      itemName: name,
+      amount: amount,
+      expenseDate: date || null,
+      remark: remark
+    });
+  });
+
+  if (items.length === 0) { alert('请至少添加一条费用明细'); return; }
+
+  var totalAmount = 0;
+  items.forEach(function(it) { totalAmount += it.amount; });
+
+  var body = {
+    empId: parseInt(empId),
+    expenseType: expenseType,
+    totalAmount: totalAmount.toFixed(2),
+    description: description,
+    invoiceUrl: invoiceUrl,
+    items: items
+  };
+
+  fetch('/api/expense-report/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.code === 200) {
+        alert('报销单提交成功！单号：' + res.data.reportNo);
+        resetExpenseForm();
+      } else {
+        alert('提交失败：' + res.msg);
+      }
+    })
+    .catch(function(e) { alert('提交失败：' + e.message); });
+}
+
+/** 重置报销表单 */
+function resetExpenseForm() {
+  document.getElementById('expDesc').value = '';
+  document.getElementById('expTotalAmount').value = '';
+  document.getElementById('expInvoiceUrl').value = '';
+  document.getElementById('invoiceFileInput').value = '';
+  document.getElementById('uploadPreview').style.display = 'none';
+  document.getElementById('uploadPlaceholder').style.display = 'block';
+  var tbody = document.getElementById('expItemTableBody');
+  tbody.innerHTML = '';
+  document.getElementById('expItemEmpty').style.display = '';
+  // 添加一个空行
+  addExpenseItem();
+}
+
+// 上传区域点击和拖拽事件
+document.addEventListener('DOMContentLoaded', function() {
+  var zone = document.getElementById('invoiceUploadZone');
+  if (!zone) return;
+  zone.addEventListener('click', function() {
+    document.getElementById('invoiceFileInput').click();
+  });
+  zone.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    zone.classList.add('dragover');
+  });
+  zone.addEventListener('dragleave', function() {
+    zone.classList.remove('dragover');
+  });
+  zone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    var files = e.dataTransfer.files;
+    if (files.length > 0) {
+      document.getElementById('invoiceFileInput').files = files;
+      handleInvoiceUpload(document.getElementById('invoiceFileInput'));
+    }
+  });
+
+  // 初始化明细空行提示状态
+  var rows = document.querySelectorAll('#expItemTableBody .expense-item-row');
+  var empty = document.getElementById('expItemEmpty');
+  if (empty && rows.length > 0) empty.style.display = 'none';
+});
+
+/* ================================================================
+   审批流模块
+   ================================================================ */
+
+var approvalPendingItem = null; // 当前正在审批的单据
+
+/** 审批页初始化 */
+function loadApprovalPage() {
+  loadApprovalList();
+  document.getElementById('approvalFlowCard').style.display = 'none';
+  document.getElementById('approvalTimelineCard').style.display = 'none';
+}
+
+/** 查询审批人角色并加载待审批列表 */
+function loadApprovalList() {
+  var userId = document.getElementById('approvalUserId').value;
+  document.getElementById('approvalTableBody').innerHTML =
+    '<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:30px;">加载中...</td></tr>';
+
+  // 获取用户角色
+  fetch('/api/approval/user-roles?userId=' + userId)
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      var roles = (res.code === 200 && res.data) ? res.data : [];
+      var roleLabel = roles.length > 0 ? '角色：' + roles.join(', ') : '无审批权限';
+      document.getElementById('approvalRoleLabel').textContent = roleLabel;
+
+      // 加载待审批列表
+      return fetch('/api/approval/pending-list?userId=' + userId);
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      var tbody = document.getElementById('approvalTableBody');
+      if (res.code !== 200 || !res.data || res.data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:30px;">暂无待审批单据</td></tr>';
+        return;
+      }
+      var html = '';
+      res.data.forEach(function(item) {
+        var statusTag = getStatusTag(item.status, item.businessType);
+        var amount = item.amount != null ? Number(item.amount).toLocaleString() : '0';
+        var bizTypeName = item.businessType === 'EXPENSE' ? '报销' : item.businessType === 'LEAVE' ? '请假' : '加班';
+        var typeLabel = item.expenseType || bizTypeName;
+        html += '<tr>';
+        html += '<td>' + (item.reportNo || '') + '</td>';
+        html += '<td><span class="tag t-blue">' + bizTypeName + '</span></td>';
+        html += '<td>' + (item.empName || '') + '</td>';
+        html += '<td>' + (item.deptName || '') + '</td>';
+        html += '<td class="txt-right">¥' + amount + '</td>';
+        html += '<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (item.description || '') + '</td>';
+        html += '<td>' + statusTag + '</td>';
+        html += '<td class="txt-center">';
+        html += '<button class="btn btn-primary btn-xs" onclick="openApprovalModal(\'' + item.businessType + '\',' + item.id + ',\'' + (item.reportNo || '') + '\',1)">通过</button> ';
+        html += '<button class="btn btn-danger btn-xs" onclick="openApprovalModal(\'' + item.businessType + '\',' + item.id + ',\'' + (item.reportNo || '') + '\',2)">驳回</button>';
+        html += '</td></tr>';
+      });
+      tbody.innerHTML = html;
+    })
+    .catch(function(e) {
+      document.getElementById('approvalTableBody').innerHTML =
+        '<tr><td colspan="8" style="text-align:center;color:var(--danger);padding:30px;">加载失败：' + e.message + '</td></tr>';
+    });
+}
+
+/** 获取状态标签HTML */
+function getStatusTag(status, bizType) {
+  if (status === 'PENDING') return '<span class="tag t-yellow">待审批</span>';
+  if (status === 'MANAGER_APPROVED') return '<span class="tag t-blue">待财务审批</span>';
+  if (status === 'FINANCE_APPROVED') return '<span class="tag t-blue">待打款</span>';
+  if (status === 'COMPLETED') return '<span class="tag t-green">已完成</span>';
+  if (status === 'REJECTED') return '<span class="tag t-red">已驳回</span>';
+  return '<span class="tag">' + status + '</span>';
+}
+
+/** 打开审批弹窗 */
+function openApprovalModal(bizType, bizId, reportNo, result) {
+  approvalPendingItem = { businessType: bizType, businessId: bizId, reportNo: reportNo, result: result };
+  document.getElementById('approvalOpinion').value = '';
+  var title = result === 1 ? '审批通过 - ' + reportNo : '驳回 - ' + reportNo;
+  document.getElementById('approvalModalTitle').textContent = title;
+  document.getElementById('approvalApproveBtn').style.display = result === 1 ? '' : 'none';
+  document.getElementById('approvalRejectBtn').style.display = result === 2 ? '' : 'none';
+  document.getElementById('approvalModal').style.display = 'flex';
+}
+
+/** 关闭审批弹窗 */
+function closeApprovalModal() {
+  document.getElementById('approvalModal').style.display = 'none';
+  approvalPendingItem = null;
+}
+
+/** 执行审批 */
+function executeApproval(result) {
+  if (!approvalPendingItem) return;
+  var opinion = document.getElementById('approvalOpinion').value;
+  var userId = document.getElementById('approvalUserId').value;
+
+  var body = {
+    businessType: approvalPendingItem.businessType,
+    businessId: approvalPendingItem.businessId,
+    approverId: parseInt(userId),
+    result: result,
+    opinion: opinion
+  };
+
+  fetch('/api/approval/execute', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      closeApprovalModal();
+      if (res.code === 200) {
+        alert(res.data.message || '操作成功');
+        loadApprovalList();
+        // 自动加载时间轴
+        loadApprovalTimeline(approvalPendingItem.businessType, approvalPendingItem.businessId, approvalPendingItem.reportNo);
+        loadApprovalFlow(approvalPendingItem.businessType, approvalPendingItem.businessId, approvalPendingItem.reportNo);
+      } else {
+        alert('操作失败：' + res.msg);
+      }
+    })
+    .catch(function(e) { alert('操作失败：' + e.message); });
+}
+
+/** 加载审批时间轴 */
+function loadApprovalTimeline(bizType, bizId, reportNo) {
+  fetch('/api/approval/timeline?businessType=' + bizType + '&businessId=' + bizId)
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      var card = document.getElementById('approvalTimelineCard');
+      var tl = document.getElementById('approvalTimeline');
+      document.getElementById('approvalTimelineTitle').textContent = (reportNo || '') + ' 审批记录';
+
+      if (res.code !== 200 || !res.data || res.data.length === 0) {
+        tl.innerHTML = '<div style="color:var(--gray-400);">暂无审批记录</div>';
+        card.style.display = '';
+        return;
+      }
+
+      var html = '';
+      res.data.forEach(function(record) {
+        var action = record.approvalResult === 1 ? '审批通过' : '驳回';
+        var icon = record.approvalResult === 1 ? '✅' : '❌';
+        html += '<div class="tl-item done">';
+        html += '<div class="tl-time">' + (record.approvalTime || record.createTime || '') + '</div>';
+        html += '<div class="tl-text">' + icon + ' ' + (record.approverName || '审批人') + ' ' + action;
+        if (record.approvalOpinion) html += '："' + record.approvalOpinion + '"';
+        html += '</div></div>';
+      });
+      tl.innerHTML = html;
+      card.style.display = '';
+    });
+}
+
+/** 加载审批进度条 */
+function loadApprovalFlow(bizType, bizId, reportNo) {
+  // 查询单据状态
+  var urlMap = {
+    'EXPENSE': '/api/expense-report/' + bizId,
+    'LEAVE': '/api/leave/' + bizId,
+    'OVERTIME': '/api/overtime/' + bizId
+  };
+  // 对于LEAVE和OVERTIME，通过审批列表查询状态
+  // 简化处理：根据bizType构建flow
+  var card = document.getElementById('approvalFlowCard');
+  document.getElementById('approvalFlowTitle').textContent = (reportNo || '') + ' 审批进度';
+
+  var status = 'PENDING';
+  // 获取当前状态
+  if (bizType === 'EXPENSE') {
+    fetch('/api/expense-report/' + bizId)
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (res.code === 200 && res.data && res.data.report) {
+          renderFlowLine(bizType, res.data.report.status);
+          document.getElementById('approvalFlowTag').textContent = getStatusText(res.data.report.status);
+        }
+      });
+  } else {
+    renderFlowLine(bizType, 'PENDING');
+  }
+  card.style.display = '';
+}
+
+function renderFlowLine(bizType, status) {
+  var nodes;
+  if (bizType === 'EXPENSE') {
+    nodes = [
+      { label: '提交申请', state: 'done' },
+      { label: '经理审批', state: status === 'PENDING' ? 'cur' : (status === 'REJECTED' && getApprovalStep(status, '经理审批') === 'reject' ? 'reject' : 'done') },
+      { label: '财务审批', state: getFlowState(status, 'MANAGER_APPROVED', 'FINANCE_APPROVED') },
+      { label: '完成', state: status === 'COMPLETED' ? 'done' : '' }
+    ];
+  } else {
+    nodes = [
+      { label: '提交申请', state: 'done' },
+      { label: '经理审批', state: getFlowState(status, 'PENDING', 'COMPLETED') },
+      { label: '完成', state: status === 'COMPLETED' ? 'done' : '' }
+    ];
+  }
+
+  var html = '';
+  nodes.forEach(function(node, i) {
+    if (i > 0) html += '<span class="flow-arrow">→</span>';
+    html += '<span class="flow-node ' + node.state + '">' + node.label + '</span>';
+  });
+  document.getElementById('approvalFlowLine').innerHTML = html;
+}
+
+function getFlowState(status, pendingStatus, doneStatus) {
+  if (status === 'REJECTED') return 'reject';
+  if (status === doneStatus || status === 'COMPLETED') return 'done';
+  if (status === pendingStatus || status === 'PENDING') return '';
+  return 'done';
+}
+
+function getApprovalStep(status, step) {
+  return status === 'REJECTED' ? 'reject' : '';
+}
+
+function getStatusText(status) {
+  var map = {
+    'PENDING': '⏳ 待审批', 'MANAGER_APPROVED': '⏳ 待财务审批',
+    'FINANCE_APPROVED': '⏳ 待打款', 'COMPLETED': '✅ 已完成', 'REJECTED': '❌ 已驳回'
+  };
+  return map[status] || status;
+}
 

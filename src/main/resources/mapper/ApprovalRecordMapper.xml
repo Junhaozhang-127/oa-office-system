@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.buu.oa.mapper.ApprovalRecordMapper">
+
+    <!-- 按业务单据查询审批记录时间轴，联表查审批人姓名 -->
+    <select id="selectTimeline" resultType="java.util.HashMap">
+        SELECT ar.id, ar.business_type AS businessType, ar.business_id AS businessId,
+               ar.approver_id AS approverId, ar.approval_result AS approvalResult,
+               ar.approval_opinion AS approvalOpinion, ar.approval_time AS approvalTime,
+               ar.create_time AS createTime,
+               ee.name AS approverName
+        FROM approval_record ar
+        LEFT JOIN emp_employee ee ON ar.approver_id = ee.id
+        WHERE ar.business_type = #{businessType}
+          AND ar.business_id = #{businessId}
+        ORDER BY ar.create_time ASC
+    </select>
+
+    <!-- 查询用户角色编码 -->
+    <select id="selectRoleCodesByUserId" resultType="string">
+        SELECT sr.role_code
+        FROM sys_user_role sur
+        JOIN sys_role sr ON sur.role_id = sr.id
+        WHERE sur.user_id = #{userId}
+    </select>
+
+    <!--
+        按角色和状态查询待审批列表
+        经理(manager)：查询 PENDING 状态的报销/请假/加班
+        财务(finance)：查询 MANAGER_APPROVED 状态的报销单
+        管理员(admin)：查询所有待处理的
+    -->
+    <select id="selectApprovalList" resultType="java.util.HashMap">
+        <choose>
+            <when test="roleCode == 'admin'">
+                <!-- 管理员：所有PENDING和MANAGER_APPROVED的单据 -->
+                SELECT * FROM (
+                    SELECT er.id, er.report_no AS reportNo, 'EXPENSE' AS businessType,
+                           ee.name AS empName, sd.dept_name AS deptName,
+                           er.total_amount AS amount, er.expense_type AS expenseType,
+                           er.description, er.status, er.create_time AS createTime
+                    FROM expense_report er
+                    LEFT JOIN emp_employee ee ON er.emp_id = ee.id
+                    LEFT JOIN sys_dept sd ON ee.dept_id = sd.id
+                    WHERE er.status IN ('PENDING', 'MANAGER_APPROVED')
+                    UNION ALL
+                    SELECT la.id, la.leave_no AS reportNo, 'LEAVE' AS businessType,
+                           ee.name AS empName, sd.dept_name AS deptName,
+                           la.days AS amount, NULL AS expenseType,
+                           la.reason AS description, la.status, la.create_time AS createTime
+                    FROM leave_application la
+                    LEFT JOIN emp_employee ee ON la.emp_id = ee.id
+                    LEFT JOIN sys_dept sd ON ee.dept_id = sd.id
+                    WHERE la.status = 'PENDING'
+                    UNION ALL
+                    SELECT oa.id, oa.overtime_no AS reportNo, 'OVERTIME' AS businessType,
+                           ee.name AS empName, sd.dept_name AS deptName,
+                           oa.hours AS amount, NULL AS expenseType,
+                           oa.reason AS description, oa.status, oa.create_time AS createTime
+                    FROM overtime_application oa
+                    LEFT JOIN emp_employee ee ON oa.emp_id = ee.id
+                    LEFT JOIN sys_dept sd ON ee.dept_id = sd.id
+                    WHERE oa.status = 'PENDING'
+                ) t ORDER BY t.createTime DESC
+            </when>
+            <when test="roleCode == 'manager'">
+                <!-- 经理：所有PENDING状态单据 -->
+                SELECT * FROM (
+                    SELECT er.id, er.report_no AS reportNo, 'EXPENSE' AS businessType,
+                           ee.name AS empName, sd.dept_name AS deptName,
+                           er.total_amount AS amount, er.expense_type AS expenseType,
+                           er.description, er.status, er.create_time AS createTime
+                    FROM expense_report er
+                    LEFT JOIN emp_employee ee ON er.emp_id = ee.id
+                    LEFT JOIN sys_dept sd ON ee.dept_id = sd.id
+                    WHERE er.status = 'PENDING'
+                    UNION ALL
+                    SELECT la.id, la.leave_no AS reportNo, 'LEAVE' AS businessType,
+                           ee.name AS empName, sd.dept_name AS deptName,
+                           la.days AS amount, NULL AS expenseType,
+                           la.reason AS description, la.status, la.create_time AS createTime
+                    FROM leave_application la
+                    LEFT JOIN emp_employee ee ON la.emp_id = ee.id
+                    LEFT JOIN sys_dept sd ON ee.dept_id = sd.id
+                    WHERE la.status = 'PENDING'
+                    UNION ALL
+                    SELECT oa.id, oa.overtime_no AS reportNo, 'OVERTIME' AS businessType,
+                           ee.name AS empName, sd.dept_name AS deptName,
+                           oa.hours AS amount, NULL AS expenseType,
+                           oa.reason AS description, oa.status, oa.create_time AS createTime
+                    FROM overtime_application oa
+                    LEFT JOIN emp_employee ee ON oa.emp_id = ee.id
+                    LEFT JOIN sys_dept sd ON ee.dept_id = sd.id
+                    WHERE oa.status = 'PENDING'
+                ) t ORDER BY t.createTime DESC
+            </when>
+            <when test="roleCode == 'finance'">
+                <!-- 财务：仅费用报销中MANAGER_APPROVED状态的单据 -->
+                SELECT er.id, er.report_no AS reportNo, 'EXPENSE' AS businessType,
+                       ee.name AS empName, sd.dept_name AS deptName,
+                       er.total_amount AS amount, er.expense_type AS expenseType,
+                       er.description, er.status, er.create_time AS createTime
+                FROM expense_report er
+                LEFT JOIN emp_employee ee ON er.emp_id = ee.id
+                LEFT JOIN sys_dept sd ON ee.dept_id = sd.id
+                WHERE er.status = 'MANAGER_APPROVED'
+                ORDER BY er.create_time DESC
+            </when>
+            <otherwise>
+                <!-- 其他角色：无权限，返回空 -->
+                SELECT * FROM expense_report WHERE 1=0
+            </otherwise>
+        </choose>
+    </select>
+
+</mapper>

@@ -58,6 +58,9 @@
       <div class="nav-item" onclick="switchTab(8,this)">
         <span class="nav-icon">📋</span>我的申请
       </div>
+      <div class="nav-item" onclick="switchTab(9,this)">
+        <span class="nav-icon">💰</span>报销申请
+      </div>
     </div>
     <div class="sidebar-footer">
       <span class="dot"></span> 系统运行中 · v1.0
@@ -220,15 +223,6 @@
         </div>
       </div>
 
-      <!-- 统计卡片 -->
-      <div class="stats-row" id="dashStatsRow">
-        <div class="stat-card blue"><div class="stat-icon blue">👥</div><div><div class="stat-num" id="dashTotalEmp">-</div><div class="stat-lbl">员工总数</div></div></div>
-        <div class="stat-card green"><div class="stat-icon green">🏢</div><div><div class="stat-num" id="dashTotalDept">-</div><div class="stat-lbl">部门总数</div></div></div>
-        <div class="stat-card orange"><div class="stat-icon orange">⏳</div><div><div class="stat-num" id="dashPending">-</div><div class="stat-lbl">待审批</div></div></div>
-        <div class="stat-card red"><div class="stat-icon red">⚠️</div><div><div class="stat-num" id="dashAnomaly">-</div><div class="stat-lbl">今日考勤异常</div></div></div>
-        <div class="stat-card blue"><div class="stat-icon blue">💊</div><div><div class="stat-num" id="dashMonthLeave">-</div><div class="stat-lbl">本月请假</div></div></div>
-        <div class="stat-card green"><div class="stat-icon green">💰</div><div><div class="stat-num" id="dashMonthExpense">-</div><div class="stat-lbl">本月报销(元)</div></div></div>
-      </div>
 
       <!-- 图表行1：部门柱状图 + 请假饼图 -->
       <div class="chart-row">
@@ -255,75 +249,121 @@
       </div>
     </div>
 
+
+    <!-- 导出选择弹窗 -->
+    <div class="modal-overlay" id="exportModal" style="display:none;">
+      <div class="modal-box" style="width:520px;">
+        <div class="modal-hd">
+          <h3>📥 选择导出模块</h3>
+          <button class="modal-close" onclick="closeExportModal()">✕</button>
+        </div>
+        <div class="modal-bd">
+          <div style="margin-bottom:12px;font-size:13px;color:var(--gray-500);">请勾选需要导出的Sheet（可多选）</div>
+          <div id="exportSheetCheckboxes" style="display:flex;flex-direction:column;gap:10px;">
+            <label style="padding:10px 14px;background:var(--gray-50);border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:14px;">
+              <input type="checkbox" class="export-check" value="employees" checked style="accent-color:var(--brand-500);width:16px;height:16px;">
+              👥 员工信息
+            </label>
+            <label style="padding:10px 14px;background:var(--gray-50);border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:14px;">
+              <input type="checkbox" class="export-check" value="attendances" checked style="accent-color:var(--brand-500);width:16px;height:16px;">
+              📅 考勤记录
+            </label>
+            <label style="padding:10px 14px;background:var(--gray-50);border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:14px;">
+              <input type="checkbox" class="export-check" value="leaves" checked style="accent-color:var(--brand-500);width:16px;height:16px;">
+              🏖️ 请假申请
+            </label>
+            <label style="padding:10px 14px;background:var(--gray-50);border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:14px;">
+              <input type="checkbox" class="export-check" value="overtimes" checked style="accent-color:var(--brand-500);width:16px;height:16px;">
+              ⏰ 加班申请
+            </label>
+            <label style="padding:10px 14px;background:var(--gray-50);border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:14px;">
+              <input type="checkbox" class="export-check" value="expenses" checked style="accent-color:var(--brand-500);width:16px;height:16px;">
+              💰 报销记录
+            </label>
+            <label style="padding:10px 14px;background:var(--gray-50);border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:14px;">
+              <input type="checkbox" class="export-check" value="approvals" checked style="accent-color:var(--brand-500);width:16px;height:16px;">
+              📝 审批记录
+            </label>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px;">
+            <button class="btn btn-xs" onclick="toggleAllChecks(true)" style="font-size:11px;">全选</button>
+            <button class="btn btn-xs" onclick="toggleAllChecks(false)" style="font-size:11px;">取消全选</button>
+          </div>
+        </div>
+        <div class="modal-ft">
+          <button class="btn" onclick="closeExportModal()">取消</button>
+          <button class="btn btn-primary" id="exportConfirmBtn" onclick="doExport()">📥 导出Excel</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ==================== 面板3：审批流 ==================== -->
     <div class="panel" id="panel3">
       <div class="page-header">
-        <div class="page-title"><span class="icon">📝</span>费用报销审批流</div>
-      </div>
-      <div class="card">
-        <div class="card-hd"><h3>BX20250519001 审批进度</h3><span class="tag t-green">✅ 已通过</span></div>
-        <div class="card-bd">
-          <div class="flow-line">
-            <div class="flow-node done">提交申请</div>
-            <div class="flow-arrow">→</div>
-            <div class="flow-node done">经理审批</div>
-            <div class="flow-arrow">→</div>
-            <div class="flow-node done">财务审批</div>
-            <div class="flow-arrow">→</div>
-            <div class="flow-node cur">出纳打款</div>
-          </div>
+        <div class="page-title"><span class="icon">📝</span>审批流</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <label style="font-size:13px;color:var(--gray-500);">当前用户：</label>
+          <select id="approvalUserId" class="form-input" style="width:180px;" onchange="loadApprovalList()">
+            <option value="1">admin (管理员)</option>
+            <option value="3">李四 (部门经理)</option>
+            <option value="4">赵六 (财务)</option>
+          </select>
         </div>
       </div>
+
+      <!-- 审批进度条 -->
+      <div class="card" id="approvalFlowCard" style="display:none;">
+        <div class="card-hd">
+          <h3 id="approvalFlowTitle">审批进度</h3>
+          <span id="approvalFlowTag" class="tag"></span>
+        </div>
+        <div class="card-bd">
+          <div class="flow-line" id="approvalFlowLine"></div>
+        </div>
+      </div>
+
+      <!-- 待审批列表 -->
       <div class="card">
-        <div class="card-hd"><h3>待审批报销单</h3></div>
+        <div class="card-hd">
+          <h3>待审批列表</h3>
+          <span id="approvalRoleLabel" style="font-size:12px;color:var(--gray-400);"></span>
+        </div>
         <div class="card-bd zero">
           <table>
-            <thead><tr><th>单号</th><th>申请人</th><th>部门</th><th class="txt-right">金额</th><th>类型</th><th>状态</th><th class="txt-center">操作</th></tr></thead>
-            <tbody>
-            <tr>
-              <td>BX20250519001</td><td>张三</td><td>研发部</td><td class="txt-right">¥2,350</td><td>差旅费</td>
-              <td><span class="tag t-yellow">待经理审批</span></td>
-              <td class="txt-center">
-                <button class="btn btn-primary btn-xs">通过</button>
-                <button class="btn btn-danger btn-xs">驳回</button>
-              </td>
-            </tr>
-            <tr>
-              <td>BX20250518002</td><td>李四</td><td>市场部</td><td class="txt-right">¥1,680</td><td>招待费</td>
-              <td><span class="tag t-yellow">待经理审批</span></td>
-              <td class="txt-center">
-                <button class="btn btn-primary btn-xs">通过</button>
-                <button class="btn btn-danger btn-xs">驳回</button>
-              </td>
-            </tr>
-            <tr>
-              <td>BX20250517003</td><td>王五</td><td>产品部</td><td class="txt-right">¥890</td><td>办公用品</td>
-              <td><span class="tag t-blue">待财务审批</span></td>
-              <td class="txt-center"><button class="btn btn-xs">查看</button></td>
-            </tr>
+            <thead><tr><th>单号</th><th>类型</th><th>申请人</th><th>部门</th><th class="txt-right">金额</th><th>摘要</th><th>状态</th><th class="txt-center">操作</th></tr></thead>
+            <tbody id="approvalTableBody">
+              <tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:30px;">加载中...</td></tr>
             </tbody>
           </table>
         </div>
       </div>
-      <div class="card">
-        <div class="card-hd"><h3>BX20250519001 审批记录</h3></div>
+
+      <!-- 审批时间轴 -->
+      <div class="card" id="approvalTimelineCard" style="display:none;">
+        <div class="card-hd"><h3 id="approvalTimelineTitle">审批记录</h3></div>
         <div class="card-bd">
-          <div class="tl-wrap">
-            <div class="tl-item done"><div class="tl-time">2026-05-19 09:30</div><div class="tl-text">张三 提交报销申请，金额 ¥2,350（差旅费-北京出差）</div></div>
-            <div class="tl-item done"><div class="tl-time">2026-05-19 10:15</div><div class="tl-text">赵六（经理）审批通过："同意报销，请走财务流程"</div></div>
-            <div class="tl-item done"><div class="tl-time">2026-05-19 11:00</div><div class="tl-text">孙七（财务）审批通过："发票合规，金额无误，同意付款"</div></div>
-            <div class="tl-item done"><div class="tl-time">2026-05-19 14:30</div><div class="tl-text">出纳 周八 完成打款，¥2,350 已转账至工资卡</div></div>
-          </div>
+          <div class="tl-wrap" id="approvalTimeline"></div>
         </div>
       </div>
-      <div class="card">
-        <div class="card-hd"><h3>AI 智能审批摘要</h3></div>
-        <div class="card-bd">
-          <div class="ai-log">
-            <div class="ai-hd">🤖 DeepSeek 审批意见摘要</div>
-            原始意见："经核实，该员工于5月15日-17日赴北京参加技术峰会，往返机票及酒店费用共计2350元，发票齐全且符合公司差旅标准，同意按标准报销。"<br><br>
-            <strong>AI摘要（20字）：</strong>北京出差3天，发票合规，金额2350元，符合标准，建议通过。
+    </div>
+
+    <!-- 审批意见弹窗 -->
+    <div class="modal-overlay" id="approvalModal" style="display:none;">
+      <div class="modal-box">
+        <div class="modal-hd">
+          <h3 id="approvalModalTitle">审批操作</h3>
+          <button class="modal-close" onclick="closeApprovalModal()">✕</button>
+        </div>
+        <div class="modal-bd">
+          <div class="form-row">
+            <label class="form-label">审批意见</label>
+            <textarea id="approvalOpinion" class="form-input" rows="3" placeholder="请输入审批意见（选填）" style="max-width:100%;"></textarea>
           </div>
+        </div>
+        <div class="modal-ft">
+          <button class="btn btn-primary" id="approvalApproveBtn" onclick="executeApproval(1)">✅ 通过</button>
+          <button class="btn btn-danger" id="approvalRejectBtn" onclick="executeApproval(2)">❌ 驳回</button>
+          <button class="btn" onclick="closeApprovalModal()">取消</button>
         </div>
       </div>
     </div>
@@ -628,6 +668,101 @@
             <tbody id="appTableBody">
               <tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:30px;">请选择员工后查看</td></tr>
             </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ==================== 面板9：报销申请 ==================== -->
+    <div class="panel" id="panel9">
+      <div class="page-header">
+        <div class="page-title"><span class="icon">💰</span>费用报销申请</div>
+        <button class="btn btn-primary" onclick="submitExpenseReport()">提交报销单</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+
+        <!-- 左列：报销基本信息 -->
+        <div class="card">
+          <div class="card-hd"><h3>报销信息</h3></div>
+          <div class="card-bd">
+            <div style="margin-bottom:14px;">
+              <label class="form-label">报销人</label>
+              <select id="expEmpId" class="form-input">
+                <option value="">请选择员工</option>
+              </select>
+            </div>
+            <div style="margin-bottom:14px;">
+              <label class="form-label">报销类型</label>
+              <select id="expType" class="form-input">
+                <option value="差旅费">差旅费</option>
+                <option value="招待费">招待费</option>
+                <option value="办公费">办公费</option>
+                <option value="交通费">交通费</option>
+                <option value="通讯费">通讯费</option>
+                <option value="其他">其他</option>
+              </select>
+            </div>
+            <div style="margin-bottom:14px;">
+              <label class="form-label">报销说明</label>
+              <textarea id="expDesc" class="form-input" rows="3" placeholder="请简要描述报销事由"></textarea>
+            </div>
+            <div style="margin-bottom:14px;">
+              <label class="form-label">报销总额</label>
+              <input type="text" id="expTotalAmount" class="form-input" readonly placeholder="根据明细自动计算" style="font-weight:bold;color:var(--primary);">
+            </div>
+          </div>
+        </div>
+
+        <!-- 右列：发票上传 -->
+        <div class="card">
+          <div class="card-hd"><h3>发票上传</h3></div>
+          <div class="card-bd">
+            <div class="upload-zone" id="invoiceUploadZone">
+              <div class="upload-placeholder" id="uploadPlaceholder">
+                <div style="font-size:36px;">📎</div>
+                <div style="margin:10px 0;color:var(--gray-500);">点击或拖拽上传发票图片</div>
+                <div style="font-size:11px;color:var(--gray-400);">支持 JPG / PNG，大小不超过 10MB</div>
+              </div>
+              <input type="file" id="invoiceFileInput" accept="image/*" style="display:none;" onchange="handleInvoiceUpload(this)">
+              <div class="upload-preview" id="uploadPreview" style="display:none;">
+                <img id="invoiceThumb" src="" alt="发票预览" style="max-width:100%;max-height:240px;border-radius:6px;">
+                <button class="btn btn-xs" style="margin-top:8px;" onclick="removeInvoice()">移除</button>
+              </div>
+              <div class="upload-loading" id="uploadLoading" style="display:none;">
+                <div class="spinner"></div>上传中...
+              </div>
+            </div>
+            <input type="hidden" id="expInvoiceUrl" value="">
+          </div>
+        </div>
+      </div>
+
+      <!-- 报销明细 -->
+      <div class="card" style="margin-top:20px;">
+        <div class="card-hd">
+          <h3>费用明细</h3>
+          <button class="btn btn-primary btn-sm" onclick="addExpenseItem()">+ 添加明细行</button>
+        </div>
+        <div class="card-bd zero">
+          <table>
+            <thead>
+              <tr><th style="width:40px;">#</th><th>费用项目</th><th class="txt-right" style="width:130px;">金额（元）</th><th style="width:130px;">发生日期</th><th>备注</th><th style="width:60px;">操作</th></tr>
+            </thead>
+            <tbody id="expItemTableBody">
+              <tr class="expense-item-row">
+                <td class="item-seq">1</td>
+                <td><input type="text" class="form-input item-name" placeholder="如：往返高铁票"></td>
+                <td><input type="number" class="form-input item-amount txt-right" placeholder="0.00" step="0.01" min="0" onchange="calcExpTotal()"></td>
+                <td><input type="date" class="form-input item-date"></td>
+                <td><input type="text" class="form-input item-remark" placeholder="备注"></td>
+                <td class="txt-center"><button class="btn btn-danger btn-xs" onclick="removeExpenseItem(this)">删除</button></td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:8px;" id="expItemEmpty">暂无明细，请点击"添加明细行"</td></tr>
+            </tfoot>
           </table>
         </div>
       </div>

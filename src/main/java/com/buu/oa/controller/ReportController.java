@@ -3,6 +3,7 @@ package com.buu.oa.controller;
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelWriter;
 import com.alibaba.excel.write.metadata.WriteSheet;
+import com.buu.oa.common.R;
 import com.buu.oa.service.DashboardService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -18,7 +19,7 @@ import java.util.*;
 
 /**
  * 报表导出Controller
- * 使用EasyExcel实现多Sheet导出，每个Sheet对应一个业务模块
+ * 支持多Sheet按需导出，前端通过复选框选择导出模块
  */
 @RestController
 @RequestMapping("/api/reports")
@@ -28,99 +29,129 @@ public class ReportController {
 
     private final DashboardService dashboardService;
 
+    /** Sheet定义：key -> {中文名, 表头, 数据key} */
+    private static final Map<String, SheetDef> SHEET_DEFS = new LinkedHashMap<>();
+    static {
+        SHEET_DEFS.put("employees", new SheetDef("员工信息",
+                Arrays.asList("工号", "姓名", "性别", "部门", "职位", "入职日期", "状态", "手机号", "邮箱"),
+                Arrays.asList("empNo", "name", "gender", "deptName", "position", "entryDate", "status", "phone", "email")));
+        SHEET_DEFS.put("attendances", new SheetDef("考勤记录",
+                Arrays.asList("姓名", "部门", "日期", "上班打卡", "下班打卡", "状态"),
+                Arrays.asList("empName", "deptName", "checkDate", "checkInTime", "checkOutTime", "status")));
+        SHEET_DEFS.put("leaves", new SheetDef("请假申请",
+                Arrays.asList("单号", "姓名", "部门", "请假类型", "开始日期", "结束日期", "天数", "原因", "状态", "提交时间"),
+                Arrays.asList("leaveNo", "empName", "deptName", "leaveType", "startDate", "endDate", "days", "reason", "status", "createTime")));
+        SHEET_DEFS.put("overtimes", new SheetDef("加班申请",
+                Arrays.asList("单号", "姓名", "部门", "加班类型", "开始时间", "结束时间", "小时数", "原因", "状态", "提交时间"),
+                Arrays.asList("overtimeNo", "empName", "deptName", "overtimeType", "startTime", "endTime", "hours", "reason", "status", "createTime")));
+        SHEET_DEFS.put("expenses", new SheetDef("报销记录",
+                Arrays.asList("单号", "姓名", "部门", "报销类型", "金额", "说明", "状态", "提交时间"),
+                Arrays.asList("reportNo", "empName", "deptName", "expenseType", "totalAmount", "description", "status", "createTime")));
+        SHEET_DEFS.put("approvals", new SheetDef("审批记录",
+                Arrays.asList("业务类型", "业务单ID", "审批人", "审批结果", "审批意见", "审批时间"),
+                Arrays.asList("businessTypeText", "businessId", "approverName", "approvalResult", "approvalOpinion", "approvalTime")));
+    }
+
     public ReportController(DashboardService dashboardService) {
         this.dashboardService = dashboardService;
     }
 
     /**
-     * 导出多Sheet统计报表
-     * 包含：员工信息、考勤记录、请假申请、加班申请、报销记录、审批记录
-     * @param startDate 开始日期（可选，默认本月1日）
-     * @param endDate   结束日期（可选，默认下月1日）
+     * 获取可导出的Sheet列表（供前端渲染复选框）
      */
-    @GetMapping("/export")
-    public void export(@RequestParam(required = false) String startDate,
-                       @RequestParam(required = false) String endDate,
-                       HttpServletResponse response) throws IOException {
-        LocalDate start = startDate != null ? LocalDate.parse(startDate) : null;
-        LocalDate end = endDate != null ? LocalDate.parse(endDate) : null;
+    @GetMapping("/sheets")
+    public R<List<Map<String, String>>> getAvailableSheets() {
+        List<Map<String, String>> list = new ArrayList<>();
+        for (Map.Entry<String, SheetDef> entry : SHEET_DEFS.entrySet()) {
+            Map<String, String> m = new LinkedHashMap<>();
+            m.put("key", entry.getKey());
+            m.put("name", entry.getValue().name);
+            list.add(m);
+        }
+        return R.success(list);
+    }
 
-        if (start == null) {
-            start = LocalDate.now().withDayOfMonth(1);
+    /**
+     * 按需导出多Sheet报表（POST JSON）
+     * 请求体：{ sheets: ["employees","leaves",...], startDate: "2026-06-01", endDate: "2026-06-30" }
+     */
+    @PostMapping("/export")
+    public void exportSelected(@RequestBody Map<String, Object> body,
+                                HttpServletResponse response) throws IOException {
+        @SuppressWarnings("unchecked")
+        List<String> sheets = (List<String>) body.get("sheets");
+        if (sheets == null || sheets.isEmpty()) {
+            response.setStatus(400);
+            response.getWriter().write("{\"error\":\"请至少选择一个导出模块\"}");
+            return;
         }
-        if (end == null) {
-            end = start.plusMonths(1);
-        }
+
+        String startStr = (String) body.get("startDate");
+        String endStr = (String) body.get("endDate");
+        LocalDate start = startStr != null && !startStr.isEmpty() ? LocalDate.parse(startStr) : LocalDate.now().withDayOfMonth(1);
+        LocalDate end = endStr != null && !endStr.isEmpty() ? LocalDate.parse(endStr) : start.plusMonths(1);
 
         // 获取导出数据
         Map<String, List<Map<String, Object>>> exportData = dashboardService.getExportData(start, end);
 
-        // 生成文件名：OA统计报表_2026-06-27.xlsx
+        // 生成文件名
         String today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
         String fileName = "OA统计报表_" + today + ".xlsx";
 
-        // 设置响应头，中文文件名URL编码防乱码
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setCharacterEncoding("UTF-8");
         String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
         response.setHeader("Content-Disposition",
                 "attachment; filename=\"" + encodedFileName + "\"; filename*=UTF-8''" + encodedFileName);
 
-        // 写入Excel
         int sheetIndex = 0;
         try (ExcelWriter excelWriter = EasyExcel.write(response.getOutputStream()).build()) {
-
-            // Sheet1: 员工信息
-            writeSheet(excelWriter, sheetIndex++, "员工信息",
-                    Arrays.asList("工号", "姓名", "性别", "部门", "职位", "入职日期", "状态", "手机号", "邮箱"),
-                    Arrays.asList("empNo", "name", "gender", "deptName", "position", "entryDate", "status", "phone", "email"),
-                    exportData.get("employees"));
-
-            // Sheet2: 考勤记录
-            writeSheet(excelWriter, sheetIndex++, "考勤记录",
-                    Arrays.asList("姓名", "部门", "日期", "上班打卡", "下班打卡", "状态"),
-                    Arrays.asList("empName", "deptName", "checkDate", "checkInTime", "checkOutTime", "status"),
-                    exportData.get("attendances"));
-
-            // Sheet3: 请假申请
-            writeSheet(excelWriter, sheetIndex++, "请假申请",
-                    Arrays.asList("单号", "姓名", "部门", "请假类型", "开始日期", "结束日期", "天数", "原因", "状态", "提交时间"),
-                    Arrays.asList("leaveNo", "empName", "deptName", "leaveType", "startDate", "endDate", "days", "reason", "status", "createTime"),
-                    exportData.get("leaves"));
-
-            // Sheet4: 加班申请
-            writeSheet(excelWriter, sheetIndex++, "加班申请",
-                    Arrays.asList("单号", "姓名", "部门", "加班类型", "开始时间", "结束时间", "小时数", "原因", "状态", "提交时间"),
-                    Arrays.asList("overtimeNo", "empName", "deptName", "overtimeType", "startTime", "endTime", "hours", "reason", "status", "createTime"),
-                    exportData.get("overtimes"));
-
-            // Sheet5: 报销记录
-            writeSheet(excelWriter, sheetIndex++, "报销记录",
-                    Arrays.asList("单号", "姓名", "部门", "报销类型", "金额", "说明", "状态", "提交时间"),
-                    Arrays.asList("reportNo", "empName", "deptName", "expenseType", "totalAmount", "description", "status", "createTime"),
-                    exportData.get("expenses"));
-
-            // Sheet6: 审批记录
-            writeSheet(excelWriter, sheetIndex++, "审批记录",
-                    Arrays.asList("业务类型", "业务单ID", "审批人", "审批结果", "审批意见", "审批时间"),
-                    Arrays.asList("businessTypeText", "businessId", "approverName", "approvalResult", "approvalOpinion", "approvalTime"),
-                    exportData.get("approvals"));
+            for (String key : sheets) {
+                SheetDef def = SHEET_DEFS.get(key);
+                if (def == null) continue;
+                writeSheet(excelWriter, sheetIndex++, def.name, def.headers, def.keys, exportData.get(key));
+            }
         }
 
-        log.info("报表导出完成：{}，共{}个Sheet", fileName, sheetIndex);
+        log.info("报表导出完成：{}，共{}个Sheet（选择：{}）", fileName, sheetIndex, sheets);
     }
 
     /**
-     * 写入单个Sheet（空数据时仍保留表头）
-     * 所有数据值转为字符串写入，避免EasyExcel对java.sql.Date等类型的转换报错
+     * GET 导出全量报表（保留兼容旧调用）
      */
+    @GetMapping("/export")
+    public void export(@RequestParam(required = false) String startDate,
+                       @RequestParam(required = false) String endDate,
+                       HttpServletResponse response) throws IOException {
+        LocalDate start = startDate != null ? LocalDate.parse(startDate) : LocalDate.now().withDayOfMonth(1);
+        LocalDate end = endDate != null ? LocalDate.parse(endDate) : start.plusMonths(1);
+        Map<String, List<Map<String, Object>>> exportData = dashboardService.getExportData(start, end);
+
+        String today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        String fileName = "OA统计报表_" + today + ".xlsx";
+
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setCharacterEncoding("UTF-8");
+        String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+        response.setHeader("Content-Disposition",
+                "attachment; filename=\"" + encodedFileName + "\"; filename*=UTF-8''" + encodedFileName);
+
+        int sheetIndex = 0;
+        try (ExcelWriter excelWriter = EasyExcel.write(response.getOutputStream()).build()) {
+            for (Map.Entry<String, SheetDef> entry : SHEET_DEFS.entrySet()) {
+                SheetDef def = entry.getValue();
+                writeSheet(excelWriter, sheetIndex++, def.name, def.headers, def.keys, exportData.get(entry.getKey()));
+            }
+        }
+
+        log.info("全量报表导出完成：{}，共{}个Sheet", fileName, sheetIndex);
+    }
+
     private void writeSheet(ExcelWriter excelWriter, int sheetNo, String sheetName,
                             List<String> headers, List<String> keys,
                             List<Map<String, Object>> data) {
         List<List<String>> rows = new ArrayList<>();
-        // 表头行
         rows.add(new ArrayList<>(headers));
-        // 数据行：统一toString处理，避免Date等类型转换异常
         if (data != null) {
             for (Map<String, Object> item : data) {
                 List<String> row = new ArrayList<>();
@@ -131,8 +162,20 @@ public class ReportController {
                 rows.add(row);
             }
         }
-
         WriteSheet writeSheet = EasyExcel.writerSheet(sheetNo, sheetName).build();
         excelWriter.write(rows, writeSheet);
+    }
+
+    /** Sheet定义内部类 */
+    private static class SheetDef {
+        final String name;
+        final List<String> headers;
+        final List<String> keys;
+
+        SheetDef(String name, List<String> headers, List<String> keys) {
+            this.name = name;
+            this.headers = headers;
+            this.keys = keys;
+        }
     }
 }

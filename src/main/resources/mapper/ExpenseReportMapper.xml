@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.buu.oa.mapper.ExpenseReportMapper">
+
+    <!-- 查询当日最大报销单序号，用于报销单号生成（BX + yyyyMMdd + 3位序号） -->
+    <select id="selectMaxSeqByDate" resultType="int">
+        SELECT COALESCE(MAX(CAST(SUBSTRING(report_no, 11) AS UNSIGNED)), 0)
+        FROM expense_report
+        WHERE report_no LIKE CONCAT('BX', #{datePrefix}, '%')
+    </select>
+
+    <!-- 按员工ID查询报销单列表，按创建时间倒序 -->
+    <select id="selectByEmpId" resultType="com.buu.oa.entity.ExpenseReport">
+        SELECT id, report_no, emp_id, total_amount, expense_type,
+               invoice_url, description, status, create_time, update_time
+        FROM expense_report
+        WHERE emp_id = #{empId}
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 按状态查询报销单列表（联员工姓名和部门） -->
+    <select id="selectWithEmployee" resultType="java.util.HashMap">
+        SELECT er.id, er.report_no AS reportNo, er.emp_id AS empId,
+               er.total_amount AS totalAmount, er.expense_type AS expenseType,
+               er.invoice_url AS invoiceUrl, er.description, er.status,
+               er.create_time AS createTime,
+               ee.name AS empName, sd.dept_name AS deptName
+        FROM expense_report er
+        LEFT JOIN emp_employee ee ON er.emp_id = ee.id
+        LEFT JOIN sys_dept sd ON ee.dept_id = sd.id
+        <where>
+            <if test="status != null and status != ''">
+                AND er.status = #{status}
+            </if>
+        </where>
+        ORDER BY er.create_time DESC
+    </select>
+
+</mapper>
