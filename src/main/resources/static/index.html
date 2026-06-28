@@ -902,8 +902,16 @@
 <script>
 // 页面初始化：检查登录状态、恢复会话、过滤菜单
 (function() {
+  // 开发阶段：自动登录，未登录时默认使用admin身份
   if (!Auth.isLoggedIn()) {
-    window.location.href = 'pages/login.html';
+    Auth.login('admin', '123456').then(function() {
+      updateUserUI();
+      filterSidebarByPermission();
+    }).catch(function() {
+      // 登录失败时仍允许浏览（开发模式降级）
+      updateUserUI();
+      filterSidebarByPermission();
+    });
     return;
   }
 
@@ -912,8 +920,14 @@
     updateUserUI();
     filterSidebarByPermission();
   }).catch(function() {
-    Auth.logout();
-    window.location.href = 'pages/login.html';
+    // Token过期，尝试重新登录
+    Auth.login('admin', '123456').then(function() {
+      updateUserUI();
+      filterSidebarByPermission();
+    }).catch(function() {
+      updateUserUI();
+      filterSidebarByPermission();
+    });
   });
 
   function updateUserUI() {

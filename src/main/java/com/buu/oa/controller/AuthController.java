@@ -7,14 +7,13 @@ import com.buu.oa.entity.SysUser;
 import com.buu.oa.mapper.SysUserMapper;
 import com.buu.oa.security.JwtUtil;
 import com.buu.oa.security.SecurityUtils;
+import com.buu.oa.security.UserDetailsImpl;
 import com.buu.oa.service.SysMenuService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -31,17 +30,17 @@ public class AuthController {
 
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
-    private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final SysMenuService sysMenuService;
     private final SysUserMapper sysUserMapper;
+    private final PasswordEncoder passwordEncoder;
 
-    public AuthController(AuthenticationManager authenticationManager, JwtUtil jwtUtil,
-                          SysMenuService sysMenuService, SysUserMapper sysUserMapper) {
-        this.authenticationManager = authenticationManager;
+    public AuthController(JwtUtil jwtUtil, SysMenuService sysMenuService,
+                          SysUserMapper sysUserMapper, PasswordEncoder passwordEncoder) {
         this.jwtUtil = jwtUtil;
         this.sysMenuService = sysMenuService;
         this.sysUserMapper = sysUserMapper;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /**
@@ -52,14 +51,32 @@ public class AuthController {
      */
     @PostMapping("/login")
     public R<Map<String, Object>> login(@RequestBody LoginRequest loginRequest) {
-        // Spring Security认证
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        String username = loginRequest.getUsername();
+        String password = loginRequest.getPassword();
 
-        Long userId = SecurityUtils.getCurrentUserId();
-        String username = SecurityUtils.getCurrentUsername();
-        List<String> roleCodes = SecurityUtils.getCurrentRoleCodes();
+        // 直接从数据库查询用户并验证密码
+        SysUser user = sysUserMapper.selectByUsername(username);
+        if (user == null) {
+            return R.fail(401, "用户名或密码错误");
+        }
+        if (user.getStatus() == null || user.getStatus() != 1) {
+            return R.fail(401, "账号已被禁用");
+        }
+
+        // 使用PasswordEncoder验证密码
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            log.warn("用户 {} 密码验证失败", username);
+            return R.fail(401, "用户名或密码错误");
+        }
+
+        Long userId = user.getId();
+        List<String> roleCodes = sysUserMapper.selectRoleCodesByUserId(userId);
+
+        // 构建Spring Security认证上下文（供后续权限注解使用）
+        UserDetailsImpl userDetails = new UserDetailsImpl(userId, username, user.getPassword(), user.getEmpId(), true, roleCodes);
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
 
         // 生成Token
         String token = jwtUtil.generateToken(userId, username, roleCodes);
@@ -68,13 +85,11 @@ public class AuthController {
         List<SysMenu> menus = sysMenuService.getMenuListByUserId(userId);
         List<String> perms = sysMenuService.getPermsByUserId(userId);
 
-        SysUser user = sysUserMapper.selectById(userId);
-
         Map<String, Object> result = new HashMap<>();
         result.put("token", token);
         result.put("userId", userId);
         result.put("username", username);
-        result.put("empId", user != null ? user.getEmpId() : null);
+        result.put("empId", user.getEmpId());
         result.put("roles", roleCodes);
         result.put("menus", menus);
         result.put("permissions", perms);
